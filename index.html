@@ -656,16 +656,17 @@ h1::after {
 
 .kd-label {
   font-family: var(--font-hud);
-  font-size: .38rem;
-  letter-spacing: .2em;
-  color: var(--muted);
+  font-size: .6rem;
+  letter-spacing: .25em;
+  color: var(--text2);
   text-transform: uppercase;
   flex-shrink: 0;
+  font-weight: 600;
 }
 
 .kd-value {
   font-family: var(--font-hud);
-  font-size: 1rem;
+  font-size: 1.2rem;
   font-weight: 700;
   letter-spacing: .06em;
   line-height: 1;
@@ -675,6 +676,17 @@ h1::after {
 .kd-mid  { color: #f0c86a; text-shadow: 0 0 10px rgba(240,200,106,0.4); }
 .kd-bad  { color: #ff7060; text-shadow: 0 0 10px rgba(255,112,96,0.4); }
 .kd-wait { color: var(--muted); }
+
+.team.red   .kd-kills-val { color: var(--red-text); }
+.team.blue  .kd-kills-val { color: var(--blue-text); }
+.team.green .kd-kills-val { color: var(--green-text); }
+
+.kd-sep {
+  width: 1px; height: 16px;
+  background: var(--line2);
+  flex-shrink: 0;
+  margin: 0 .2rem;
+}
 
 .kd-window {
   font-family: var(--font-hud);
@@ -1025,6 +1037,9 @@ function buildCard(match, tierNum, alliancesPerColor) {
           <div class="kd-strip">
             <span class="kd-label">K/D</span>
             <span class="kd-value ${kdClass}">${kdStr}</span>
+            <div class="kd-sep"></div>
+            <span class="kd-label">Kills</span>
+            <span class="kd-value kd-kills-val">${kdDelta ? fmt(kdDelta.kills) : '—'}</span>
             <span class="kd-window">${kdWindow}</span>
           </div>
           ${blocksHtml}

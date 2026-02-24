@@ -4,12 +4,15 @@
 import fetch from 'node-fetch';
 import Papa from 'papaparse';
 
-const GW2       = 'https://api.guildwars2.com/v2';
-const BIN_ID    = process.env.JSONBIN_BIN_ID;
-const BIN_KEY   = process.env.JSONBIN_KEY;
-const BIN_URL   = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+const GW2          = 'https://api.guildwars2.com/v2';
+const BIN_KEY      = process.env.JSONBIN_KEY;
+const BIN_ID       = process.env.JSONBIN_BIN_ID;
+const BIN_HIST_ID  = process.env.JSONBIN_HIST_ID;
+const BIN_URL      = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+const BIN_HIST_URL = `https://api.jsonbin.io/v3/b/${BIN_HIST_ID}`;
 
-const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1Txjpcet-9FDVek6uJ0N3OciwgbpE0cfWozUK7ATfWx4/export?format=csv&gid=1120510750';
+const MAX_SNAPSHOTS  = 12; // 12 × 10min = 2h
+const SHEET_URL      = 'https://docs.google.com/spreadsheets/d/1Txjpcet-9FDVek6uJ0N3OciwgbpE0cfWozUK7ATfWx4/export?format=csv&gid=1120510750';
 const MY_ALLIANCE_ID = '4F2CA889-AA1F-EF11-81AB-F50023EE1BF3';
 
 const WVW_TEAM_NAMES = {
@@ -26,14 +29,12 @@ const WVW_TEAM_NAMES = {
 
 async function gw2(path) {
   const r = await fetch(GW2 + path);
-  if (!r.ok) throw new Error(`GW2 API error: ${path} → ${r.status}`);
+  if (!r.ok) throw new Error(`GW2 API error: ${path} -> ${r.status}`);
   return r.json();
 }
 
-// ── Parse CSV (RFC 4180)
 function parseCSV(text) {
-  const result = Papa.parse(text, { skipEmptyLines: true });
-  return result.data;
+  return Papa.parse(text, { skipEmptyLines: true }).data;
 }
 
 function parseSheet(csvText) {
@@ -46,9 +47,7 @@ function parseSheet(csvText) {
     if (uuidIdx === -1) continue;
     const allianceId = cols[uuidIdx].trim().toUpperCase();
     const worldName = cols.slice(uuidIdx + 1)
-      .map(c => c.trim())
-      .filter(c => c && !/^(TRUE|FALSE)$/i.test(c))
-      .join(' ').trim();
+      .map(c => c.trim()).filter(c => c && !/^(TRUE|FALSE)$/i.test(c)).join(' ').trim();
     if (!worldName) continue;
     const allianceName = cols[0].trim();
     if (!allianceName || /^(TRUE|FALSE|\(+)/.test(allianceName)) continue;
@@ -56,55 +55,42 @@ function parseSheet(csvText) {
         allianceName.toLowerCase().includes('lockout') ||
         (allianceName.toLowerCase().startsWith('alliance') && allianceName.length < 12)) continue;
     const guildsRaw = (cols[2] || '').trim();
-    const memberGuilds = guildsRaw
-      ? guildsRaw.split(/\r?\n/).map(g => g.trim()).filter(g => g)
-      : [];
+    const memberGuilds = guildsRaw ? guildsRaw.split(/\r?\n/).map(g => g.trim()).filter(g => g) : [];
     alliances.push({ allianceId, allianceName, memberGuilds, worldName });
   }
   return alliances;
 }
 
-// ── Load previous snapshot from JSONBin (for K/D delta)
-async function loadSnapshot() {
+async function binGet(url) {
   try {
-    const r = await fetch(BIN_URL + '/latest', {
-      headers: { 'X-Master-Key': BIN_KEY }
-    });
+    const r = await fetch(url + '/latest', { headers: { 'X-Master-Key': BIN_KEY } });
     if (!r.ok) return null;
-    const data = await r.json();
-    return data.record || null;
+    return (await r.json()).record || null;
   } catch { return null; }
 }
 
-// ── Save full payload to JSONBin
-async function savePayload(payload) {
-  const r = await fetch(BIN_URL, {
+async function binPut(url, data) {
+  const r = await fetch(url, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Master-Key': BIN_KEY,
-      'X-Bin-Versioning': 'false',
-    },
-    body: JSON.stringify(payload),
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': BIN_KEY, 'X-Bin-Versioning': 'false' },
+    body: JSON.stringify(data),
   });
-  if (!r.ok) {
-    const t = await r.text();
-    throw new Error(`JSONBin save failed: ${r.status} ${t}`);
-  }
-  console.log('✓ Saved to JSONBin');
+  if (!r.ok) { const t = await r.text(); throw new Error(`JSONBin PUT failed: ${r.status} ${t}`); }
 }
 
-// ── Main
 (async () => {
-  console.log('Fetching data…');
+  console.log('Fetching data...');
+  const now = Date.now();
 
-  // 1. Load previous snapshot for K/D delta
-  const prev = await loadSnapshot();
-  const prevTimestamp = prev?.timestamp || 0;
-  const prevKills     = prev?.kills     || {};
-  const prevDeaths    = prev?.deaths    || {};
+  // 1. Load history bin
+  const histRecord = await binGet(BIN_HIST_URL);
+  const snapshots  = histRecord?.snapshots || [];
 
-  // 2. Fetch in parallel
+  // Use oldest snapshot as baseline (~2h ago)
+  const oldSnap    = snapshots.length > 0 ? snapshots[0] : null;
+  const oldMinutes = oldSnap ? Math.round((now - oldSnap.timestamp) / 60000) : 0;
+
+  // 2. Fetch GW2 data
   const [allMatchIds, worldsRaw, naWvWGuilds, csvText, ddbrGuildData] = await Promise.all([
     gw2('/wvw/matches'),
     gw2('/worlds?ids=all'),
@@ -116,11 +102,10 @@ async function savePayload(payload) {
   const naIds   = allMatchIds.filter(id => id.startsWith('1-')).sort();
   const matches = await Promise.all(naIds.map(id => gw2(`/wvw/matches/${id}`)));
 
-  // 3. World names
+  // 3. World names + team mapping
   const worldNames = {};
   worldsRaw.forEach(w => { worldNames[String(w.id)] = w.name; });
 
-  // 4. World → team mapping
   const worldIdToTeam = {};
   matches.forEach(m => {
     ['red','blue','green'].forEach(color => {
@@ -130,24 +115,18 @@ async function savePayload(payload) {
     });
   });
 
-  // 5. Parse alliances
+  // 4. Parse alliances
   const allianceData = parseSheet(csvText);
   const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-
   const tierAllianceMap = {};
   naIds.forEach(id => { tierAllianceMap[id] = { red:[], blue:[], green:[] }; });
 
   allianceData.forEach(a => {
     let team = null;
-    if (naWvWGuilds?.[a.allianceId]) {
-      const wid = String(naWvWGuilds[a.allianceId]);
-      team = worldIdToTeam[wid];
-    }
+    if (naWvWGuilds?.[a.allianceId]) team = worldIdToTeam[String(naWvWGuilds[a.allianceId])];
     if (!team && a.worldName) {
       const normTarget = norm(a.worldName);
-      const matchedWid = Object.keys(worldNames).find(wid =>
-        norm(worldNames[wid]) === normTarget
-      );
+      const matchedWid = Object.keys(worldNames).find(wid => norm(worldNames[wid]) === normTarget);
       if (matchedWid) team = worldIdToTeam[matchedWid];
     }
     if (team && tierAllianceMap[team.matchId]) {
@@ -164,20 +143,17 @@ async function savePayload(payload) {
   if (ddbrWorldId) {
     const ddbrTeam = worldIdToTeam[String(ddbrWorldId)];
     if (ddbrTeam && tierAllianceMap[ddbrTeam.matchId]) {
-      const ddbrName = ddbrGuildData ? `[DDBR] ${ddbrGuildData.name}` : '[DDBR]';
       const ddbrEntry = {
         allianceId: MY_ALLIANCE_ID,
-        allianceName: ddbrName,
-        memberGuilds: [],
-        worldName: worldNames[String(ddbrWorldId)] || '',
-        isDDBR: true,
+        allianceName: ddbrGuildData ? `[DDBR] ${ddbrGuildData.name}` : '[DDBR]',
+        memberGuilds: [], worldName: worldNames[String(ddbrWorldId)] || '', isDDBR: true,
       };
       const existing = tierAllianceMap[ddbrTeam.matchId][ddbrTeam.color];
       if (!existing.find(a => a.isDDBR)) existing.unshift(ddbrEntry);
     }
   }
 
-  // 6. Build kills/deaths maps for snapshot
+  // 5. Current kills/deaths
   const nowKills  = {};
   const nowDeaths = {};
   matches.forEach(m => {
@@ -185,23 +161,25 @@ async function savePayload(payload) {
     nowDeaths[m.id] = { red: m.deaths?.red||0, blue: m.deaths?.blue||0, green: m.deaths?.green||0 };
   });
 
-  // 7. Compute K/D delta per match/color
-  const now = Date.now();
-  const minutes = prevTimestamp ? Math.round((now - prevTimestamp) / 60000) : 0;
+  // 6. K/D delta against oldest snapshot (~2h ago)
   const kdDelta = {};
-
-  if (minutes >= 10) {
+  if (oldSnap && oldMinutes >= 10) {
     matches.forEach(m => {
       kdDelta[m.id] = {};
       ['red','blue','green'].forEach(color => {
-        const kills  = Math.max(0, (nowKills[m.id][color]  || 0) - (prevKills[m.id]?.[color]  || 0));
-        const deaths = Math.max(0, (nowDeaths[m.id][color] || 0) - (prevDeaths[m.id]?.[color] || 0));
-        kdDelta[m.id][color] = { kills, deaths, minutes };
+        const kills  = Math.max(0, (nowKills[m.id][color]  || 0) - (oldSnap.kills[m.id]?.[color]  || 0));
+        const deaths = Math.max(0, (nowDeaths[m.id][color] || 0) - (oldSnap.deaths[m.id]?.[color] || 0));
+        kdDelta[m.id][color] = { kills, deaths, minutes: oldMinutes };
       });
     });
   }
 
-  // 8. Pre-resolve primary world name per match/color (so HTML doesn't need naWvWGuilds)
+  // 7. Update history bin (append + trim to MAX_SNAPSHOTS)
+  const updatedSnapshots = [...snapshots, { timestamp: now, kills: nowKills, deaths: nowDeaths }].slice(-MAX_SNAPSHOTS);
+  await binPut(BIN_HIST_URL, { snapshots: updatedSnapshots });
+  console.log(`History: ${updatedSnapshots.length}/${MAX_SNAPSHOTS} snapshots, oldest ~${oldMinutes}min ago`);
+
+  // 8. Pre-resolve primary world names
   const primaryWorlds = {};
   matches.forEach(m => {
     primaryWorlds[m.id] = {};
@@ -222,28 +200,17 @@ async function savePayload(payload) {
     });
   });
 
-  // 9. Slim down match data
-  const matchesSlim = matches.map(m => ({
-    id:             m.id,
-    start_time:     m.start_time,
-    end_time:       m.end_time,
-    scores:         m.scores,
-    kills:          m.kills,
-    deaths:         m.deaths,
-    victory_points: m.victory_points,
-  }));
-
-  // 10. Save to JSONBin — lean payload only
-  const payload = {
-    timestamp:       now,
-    kills:           nowKills,
-    deaths:          nowDeaths,
+  // 9. Save main payload
+  await binPut(BIN_URL, {
+    timestamp: now,
     kdDelta,
-    matches:         matchesSlim,
+    matches: matches.map(m => ({
+      id: m.id, start_time: m.start_time, end_time: m.end_time,
+      scores: m.scores, kills: m.kills, deaths: m.deaths, victory_points: m.victory_points,
+    })),
     tierAllianceMap,
     primaryWorlds,
-  };
+  });
 
-  await savePayload(payload);
-  console.log(`✓ Done. ${naIds.length} matches, ${allianceData.length} alliances, delta ${minutes}min`);
+  console.log(`Done. ${naIds.length} matches, ${allianceData.length} alliances, K/D window ~${oldMinutes}min`);
 })();
