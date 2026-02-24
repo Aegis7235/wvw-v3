@@ -201,20 +201,39 @@ async function savePayload(payload) {
     });
   }
 
-  // 8. Slim down match data (remove heavy objectives array)
+  // 8. Pre-resolve primary world name per match/color (so HTML doesn't need naWvWGuilds)
+  const primaryWorlds = {};
+  matches.forEach(m => {
+    primaryWorlds[m.id] = {};
+    ['red','blue','green'].forEach(color => {
+      const alliances = (tierAllianceMap[m.id] || {})[color] || [];
+      let name = null;
+      for (const a of alliances) {
+        const teamId = naWvWGuilds?.[a.allianceId?.toUpperCase()]
+                    || naWvWGuilds?.[a.allianceId?.toLowerCase()]
+                    || naWvWGuilds?.[a.allianceId];
+        if (teamId && WVW_TEAM_NAMES[String(teamId)]) { name = WVW_TEAM_NAMES[String(teamId)]; break; }
+      }
+      if (!name) {
+        const wids = m.worlds[color] ? [m.worlds[color]] : (m.all_worlds[color] || []);
+        name = worldNames[String(wids[0])] || '\u2014';
+      }
+      primaryWorlds[m.id][color] = name;
+    });
+  });
+
+  // 9. Slim down match data
   const matchesSlim = matches.map(m => ({
     id:             m.id,
     start_time:     m.start_time,
     end_time:       m.end_time,
     scores:         m.scores,
-    worlds:         m.worlds,
-    all_worlds:     m.all_worlds,
     kills:          m.kills,
     deaths:         m.deaths,
     victory_points: m.victory_points,
   }));
 
-  // 9. Save everything to JSONBin
+  // 10. Save to JSONBin — lean payload only
   const payload = {
     timestamp:       now,
     kills:           nowKills,
@@ -222,9 +241,7 @@ async function savePayload(payload) {
     kdDelta,
     matches:         matchesSlim,
     tierAllianceMap,
-    worldNames,
-    naWvWGuilds,
-    wvwTeamNames:    WVW_TEAM_NAMES,
+    primaryWorlds,
   };
 
   await savePayload(payload);

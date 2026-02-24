@@ -895,14 +895,15 @@ async function init() {
 
     if (!data || !data.matches) throw new Error('Data not ready yet — GitHub Action may not have run. Try again in a minute.');
 
-    const { matches, tierAllianceMap, worldNames, naWvWGuilds, wvwTeamNames, kdDelta, timestamp } = data;
+    const { matches, tierAllianceMap, primaryWorlds, kdDelta, timestamp } = data;
 
-    // Attach kdDelta into each match object for buildCard to use
+    // Attach kdDelta and primaryWorlds into each match object for buildCard
     matches.forEach(m => {
-      m._kdDelta = (kdDelta || {})[m.id] || null;
+      m._kdDelta      = (kdDelta      || {})[m.id] || null;
+      m._primaryWorld = (primaryWorlds || {})[m.id] || {};
     });
 
-    renderGrid(matches, tierAllianceMap, worldNames, naWvWGuilds, wvwTeamNames);
+    renderGrid(matches, tierAllianceMap);
 
     const age = timestamp ? Math.round((Date.now() - timestamp) / 60000) : null;
     const ageStr = age !== null ? ` · updated ${age}m ago` : '';
@@ -920,32 +921,22 @@ async function init() {
 // ═══════════════════════════════════════════════════════════════
 // RENDER
 // ═══════════════════════════════════════════════════════════════
-function renderGrid(matches, tierAllianceMap, worldNames, naWvWGuilds, wvwTeamNames) {
+function renderGrid(matches, tierAllianceMap) {
   const grid = document.createElement('div');
   grid.className = 'tiers-grid';
-  matches.forEach((m, i) => grid.appendChild(buildCard(m, i+1, tierAllianceMap[m.id], worldNames, naWvWGuilds, wvwTeamNames)));
+  matches.forEach((m, i) => grid.appendChild(buildCard(m, i+1, tierAllianceMap[m.id])));
   document.getElementById('app').innerHTML = '';
   document.getElementById('app').appendChild(grid);
 }
 
-function buildCard(match, tierNum, alliancesPerColor, worldNames, naWvWGuilds, WVW_TEAM_NAMES) {
+function buildCard(match, tierNum, alliancesPerColor) {
   const sc  = match.scores;
   const vp  = match.victory_points || {};
   const tot = (sc.red||0) + (sc.blue||0) + (sc.green||0);
   const end = new Date(match.end_time).toLocaleDateString('en-US', {day:'2-digit', month:'2-digit'});
 
   function primaryWorld(color) {
-    const alliances = (alliancesPerColor || {})[color] || [];
-    for (const a of alliances) {
-      const teamId = naWvWGuilds && (
-        naWvWGuilds[a.allianceId?.toUpperCase()] ||
-        naWvWGuilds[a.allianceId?.toLowerCase()] ||
-        naWvWGuilds[a.allianceId]
-      );
-      if (teamId && WVW_TEAM_NAMES[String(teamId)]) return WVW_TEAM_NAMES[String(teamId)];
-    }
-    const wids = match.worlds[color] ? [match.worlds[color]] : (match.all_worlds[color]||[]);
-    return worldNames[String(wids[0])] || '—';
+    return (match._primaryWorld || {})[color] || '—';
   }
 
   const card = document.createElement('div');
