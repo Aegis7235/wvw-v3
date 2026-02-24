@@ -70,6 +70,7 @@ async function binGet(url) {
 }
 
 async function binPut(url, data) {
+  console.log(`PUT ${url} (${JSON.stringify(data).length} bytes)`);
   const r = await fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', 'X-Master-Key': BIN_KEY, 'X-Bin-Versioning': 'false' },
