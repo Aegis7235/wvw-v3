@@ -22,6 +22,4 @@ jobs:
         env:
           JSONBIN_KEY: ${{ secrets.JSONBIN_KEY }}
           JSONBIN_BIN_ID: ${{ secrets.JSONBIN_BIN_ID }}
-          JSONBIN_HIST_ID: ${{ secrets.JSONBIN_HIST_ID }}
         run: node fetch-data.js
- 
