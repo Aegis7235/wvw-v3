@@ -647,17 +647,18 @@ h1::after {
 ══════════════════════════════════════════════ */
 .kd-chart-wrap {
   padding: .6rem 1.1rem .7rem 1.1rem;
-  background: rgba(0,0,0,0.2);
+  background: rgba(0,0,0,0.25);
   border-top: 1px solid var(--line);
 }
 
 .kd-chart-title {
   font-family: var(--font-hud);
-  font-size: .38rem;
+  font-size: .55rem;
   letter-spacing: .2em;
-  color: var(--muted);
+  color: var(--text2);
   text-transform: uppercase;
-  margin-bottom: .4rem;
+  margin-bottom: .5rem;
+  font-weight: 600;
 }
 
 .kd-chart {
@@ -668,7 +669,7 @@ h1::after {
 }
 
 .kd-chart-baseline {
-  stroke: var(--line2);
+  stroke: rgba(255,255,255,0.15);
   stroke-width: 1;
   stroke-dasharray: 3 3;
 }
@@ -711,6 +712,84 @@ h1::after {
 .team.red   .kd-kills-val { color: var(--red-text); }
 .team.blue  .kd-kills-val { color: var(--blue-text); }
 .team.green .kd-kills-val { color: var(--green-text); }
+
+.kd-crown {
+  font-size: 1rem;
+  color: var(--gold);
+  filter: drop-shadow(0 0 6px rgba(212,169,66,0.7));
+  animation: crownPulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes crownPulse {
+  0%,100% { filter: drop-shadow(0 0 4px rgba(212,169,66,0.5)); transform: scale(1); }
+  50%      { filter: drop-shadow(0 0 12px rgba(212,169,66,0.9)); transform: scale(1.15); }
+}
+
+.kd-best {
+  background: rgba(212,169,66,0.06);
+  border-top: 1px solid rgba(212,169,66,0.2);
+}
+
+/* ── LIVE PULSE DOT */
+.live-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  background: #50e090;
+  border-radius: 50%;
+  margin-right: .4rem;
+  animation: livePulse 2s ease-in-out infinite;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+@keyframes livePulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(80,224,144,0.6); opacity: 1; }
+  50%      { box-shadow: 0 0 0 5px rgba(80,224,144,0); opacity: 0.7; }
+}
+
+/* ── COUNTDOWN */
+.countdown-strip {
+  position: relative; z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: .5rem 1.5rem;
+  background: rgba(8,6,17,0.85);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-hud);
+}
+.countdown-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .1rem;
+}
+.countdown-val {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: .05em;
+  line-height: 1;
+}
+.countdown-unit {
+  font-size: .38rem;
+  letter-spacing: .15em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.countdown-sep {
+  font-size: 1rem;
+  color: var(--line2);
+  font-weight: 700;
+  margin-bottom: .3rem;
+}
+.countdown-label {
+  font-size: .42rem;
+  letter-spacing: .18em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-right: 1rem;
+}
 
 .kd-sep {
   width: 1px; height: 16px;
@@ -885,6 +964,18 @@ h1::after {
   </div>
 </div>
 
+<!-- ═══ COUNTDOWN ═══ -->
+<div class="countdown-strip" id="countdownStrip" style="display:none">
+  <span class="countdown-label">⚔ Matchup ends in</span>
+  <div class="countdown-item"><span class="countdown-val" id="cd-d">—</span><span class="countdown-unit">days</span></div>
+  <span class="countdown-sep">:</span>
+  <div class="countdown-item"><span class="countdown-val" id="cd-h">—</span><span class="countdown-unit">hrs</span></div>
+  <span class="countdown-sep">:</span>
+  <div class="countdown-item"><span class="countdown-val" id="cd-m">—</span><span class="countdown-unit">min</span></div>
+  <span class="countdown-sep">:</span>
+  <div class="countdown-item"><span class="countdown-val" id="cd-s">—</span><span class="countdown-unit">sec</span></div>
+</div>
+
 <!-- ═══ APP ═══ -->
 <div id="app">
   <div class="msg"><span class="spinner"></span> Loading battle data…</div>
@@ -949,9 +1040,14 @@ async function init() {
 
     renderGrid(matches, tierAllianceMap);
 
+    // ── Countdown usando end_time do primeiro match
+    if (matches[0]?.end_time) {
+      startCountdown(new Date(matches[0].end_time));
+    }
+
     const age = timestamp ? Math.round((Date.now() - timestamp) / 60000) : null;
     const ageStr = age !== null ? ` · updated ${age}m ago` : '';
-    setStatus(`✓ Data loaded${ageStr}`);
+    setStatus(`<span class="live-dot"></span> Live${ageStr}`);
 
   } catch(e) {
     document.getElementById('app').innerHTML = `<div class="msg err">Error: ${e.message}<br><small>Check the console for details.</small></div>`;
@@ -966,14 +1062,25 @@ async function init() {
 // RENDER
 // ═══════════════════════════════════════════════════════════════
 function renderGrid(matches, tierAllianceMap) {
+  // Find best K/D across all matches and colors
+  let bestKd = -1, bestMatchId = null, bestColor = null;
+  matches.forEach(m => {
+    ['red','blue','green'].forEach(color => {
+      const d = (m._kdDelta || {})[color];
+      if (!d || d.deaths === 0) return;
+      const kd = d.kills / d.deaths;
+      if (kd > bestKd) { bestKd = kd; bestMatchId = m.id; bestColor = color; }
+    });
+  });
+
   const grid = document.createElement('div');
   grid.className = 'tiers-grid';
-  matches.forEach((m, i) => grid.appendChild(buildCard(m, i+1, tierAllianceMap[m.id])));
+  matches.forEach((m, i) => grid.appendChild(buildCard(m, i+1, tierAllianceMap[m.id], bestMatchId, bestColor)));
   document.getElementById('app').innerHTML = '';
   document.getElementById('app').appendChild(grid);
 }
 
-function buildCard(match, tierNum, alliancesPerColor) {
+function buildCard(match, tierNum, alliancesPerColor, bestMatchId, bestColor) {
   const sc  = match.scores;
   const vp  = match.victory_points || {};
   const tot = (sc.red||0) + (sc.blue||0) + (sc.green||0);
@@ -1055,6 +1162,7 @@ function buildCard(match, tierNum, alliancesPerColor) {
         kdWindow = h > 0 ? `last ${h}h${mn > 0 ? mn + 'm' : ''}` : `last ${mn}m`;
       }
 
+      const isBest = match.id === bestMatchId && color === bestColor;
       return `
       <div class="team ${color}">
         <div class="team-band"></div>
@@ -1067,7 +1175,8 @@ function buildCard(match, tierNum, alliancesPerColor) {
               <span class="team-score">${fmt(sc[color])}</span>
             </div>
           </div>
-          <div class="kd-strip">
+          <div class="kd-strip${isBest ? ' kd-best' : ''}">
+            ${isBest ? '<span class="kd-crown" title="Best K/D on the server">♛</span>' : ''}
             <span class="kd-label">K/D</span>
             <span class="kd-value ${kdClass}">${kdStr}</span>
             <div class="kd-sep"></div>
@@ -1080,6 +1189,36 @@ function buildCard(match, tierNum, alliancesPerColor) {
       </div>`;
     }).join('')}`;
   return card;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COUNTDOWN
+// ═══════════════════════════════════════════════════════════════
+let _countdownInterval = null;
+function startCountdown(endDate) {
+  const strip = document.getElementById('countdownStrip');
+  if (!strip) return;
+  strip.style.display = 'flex';
+  if (_countdownInterval) clearInterval(_countdownInterval);
+
+  function tick() {
+    const diff = endDate - Date.now();
+    if (diff <= 0) {
+      clearInterval(_countdownInterval);
+      strip.style.display = 'none';
+      return;
+    }
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    document.getElementById('cd-d').textContent = String(d).padStart(2,'0');
+    document.getElementById('cd-h').textContent = String(h).padStart(2,'0');
+    document.getElementById('cd-m').textContent = String(m).padStart(2,'0');
+    document.getElementById('cd-s').textContent = String(s).padStart(2,'0');
+  }
+  tick();
+  _countdownInterval = setInterval(tick, 1000);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1137,7 +1276,7 @@ function buildKdChart(series, matchId) {
   // Y axis labels
   const yLabels = [minV, (minV + maxV) / 2, maxV].map(v => {
     const y = toY(v);
-    return `<text x="${PAD.l - 4}" y="${y.toFixed(1)}" text-anchor="end" dominant-baseline="middle" fill="#504870" font-size="7" font-family="monospace">${v.toFixed(1)}</text>`;
+    return `<text x="${PAD.l - 4}" y="${y.toFixed(1)}" text-anchor="end" dominant-baseline="middle" fill="#9890b8" font-size="7" font-family="monospace">${v.toFixed(1)}</text>`;
   }).join('');
 
   // X axis labels (time)
@@ -1146,7 +1285,7 @@ function buildKdChart(series, matchId) {
     .map(pt => {
       const x = toX(pt.t);
       const label = pt.t === 0 ? 'now' : `-${pt.t}m`;
-      return `<text x="${x.toFixed(1)}" y="${(H - 4).toFixed(1)}" text-anchor="middle" fill="#504870" font-size="7" font-family="monospace">${label}</text>`;
+      return `<text x="${x.toFixed(1)}" y="${(H - 4).toFixed(1)}" text-anchor="middle" fill="#9890b8" font-size="7" font-family="monospace">${label}</text>`;
     }).join('');
 
   // Baseline at KD=1
