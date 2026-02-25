@@ -1,6 +1,4 @@
 // fetch-data.js — runs every 10 min via GitHub Actions
-// Fetches GW2 API + alliance spreadsheet → saves to JSONBin
-
 import fetch from 'node-fetch';
 import Papa from 'papaparse';
 
@@ -86,7 +84,7 @@ async function binPut(url, data) {
   console.log('BIN_HIST_ID:', BIN_HIST_ID);
   const now = Date.now();
 
-  // 1. Load history bin (oldest snapshot = ~2h baseline)
+  // 1. Load history
   const histRecord = await binGet(BIN_HIST_URL);
   const snapshots  = histRecord?.snapshots || [];
   const oldSnap    = snapshots.length > 0 ? snapshots[0] : null;
@@ -139,7 +137,6 @@ async function binPut(url, data) {
     }
   });
 
-  // DDBR entry
   const ddbrWorldId = naWvWGuilds?.[MY_ALLIANCE_ID.toUpperCase()]
                    || naWvWGuilds?.[MY_ALLIANCE_ID.toLowerCase()]
                    || naWvWGuilds?.[MY_ALLIANCE_ID];
@@ -177,12 +174,33 @@ async function binPut(url, data) {
     });
   }
 
-  // 7. Update history: append current, keep last MAX_SNAPSHOTS
+  // 7. Build KD chart series — delta between each consecutive snapshot pair
+  // Each point = { t: minutesAgo, kd: { red, blue, green } }
+  const kdSeries = {};
+  naIds.forEach(id => { kdSeries[id] = []; });
+
+  const allSnaps = [...snapshots, { timestamp: now, kills: nowKills, deaths: nowDeaths }];
+  for (let i = 1; i < allSnaps.length; i++) {
+    const prev = allSnaps[i - 1];
+    const curr = allSnaps[i];
+    const point = { t: Math.round((now - curr.timestamp) / 60000) };
+    naIds.forEach(matchId => {
+      point[matchId] = {};
+      ['red','blue','green'].forEach(color => {
+        const k = Math.max(0, (curr.kills[matchId]?.[color]  || 0) - (prev.kills[matchId]?.[color]  || 0));
+        const d = Math.max(0, (curr.deaths[matchId]?.[color] || 0) - (prev.deaths[matchId]?.[color] || 0));
+        point[matchId][color] = d > 0 ? parseFloat((k / d).toFixed(2)) : k > 0 ? 3.0 : null;
+      });
+    });
+    naIds.forEach(id => kdSeries[id].push(point));
+  }
+
+  // 8. Update history
   const updatedSnapshots = [...snapshots, { timestamp: now, kills: nowKills, deaths: nowDeaths }].slice(-MAX_SNAPSHOTS);
   await binPut(BIN_HIST_URL, { snapshots: updatedSnapshots });
-  console.log(`History saved: ${updatedSnapshots.length}/${MAX_SNAPSHOTS} snapshots`);
+  console.log(`History saved: ${updatedSnapshots.length}/${MAX_SNAPSHOTS}`);
 
-  // 8. Pre-resolve primary world names
+  // 9. Pre-resolve primary world names
   const primaryWorlds = {};
   matches.forEach(m => {
     primaryWorlds[m.id] = {};
@@ -203,10 +221,11 @@ async function binPut(url, data) {
     });
   });
 
-  // 9. Save main payload
+  // 10. Save main payload
   await binPut(BIN_URL, {
     timestamp: now,
     kdDelta,
+    kdSeries,
     matches: matches.map(m => ({
       id: m.id, start_time: m.start_time, end_time: m.end_time,
       scores: m.scores, kills: m.kills, deaths: m.deaths, victory_points: m.victory_points,

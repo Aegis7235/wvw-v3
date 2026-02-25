@@ -643,6 +643,37 @@ h1::after {
 }
 
 /* ══════════════════════════════════════════════
+   KD CHART
+══════════════════════════════════════════════ */
+.kd-chart-wrap {
+  padding: .6rem 1.1rem .7rem 1.1rem;
+  background: rgba(0,0,0,0.2);
+  border-top: 1px solid var(--line);
+}
+
+.kd-chart-title {
+  font-family: var(--font-hud);
+  font-size: .38rem;
+  letter-spacing: .2em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: .4rem;
+}
+
+.kd-chart {
+  width: 100%;
+  height: 80px;
+  display: block;
+  overflow: visible;
+}
+
+.kd-chart-baseline {
+  stroke: var(--line2);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+/* ══════════════════════════════════════════════
    K/D STRIP
 ══════════════════════════════════════════════ */
 .kd-strip {
@@ -907,12 +938,13 @@ async function init() {
 
     if (!data || !data.matches) throw new Error('Data not ready yet — GitHub Action may not have run. Try again in a minute.');
 
-    const { matches, tierAllianceMap, primaryWorlds, kdDelta, timestamp } = data;
+    const { matches, tierAllianceMap, primaryWorlds, kdDelta, kdSeries, timestamp } = data;
 
-    // Attach kdDelta and primaryWorlds into each match object for buildCard
+    // Attach kdDelta, primaryWorlds and kdSeries into each match object for buildCard
     matches.forEach(m => {
       m._kdDelta      = (kdDelta      || {})[m.id] || null;
       m._primaryWorld = (primaryWorlds || {})[m.id] || {};
+      m._kdSeries     = (kdSeries     || {})[m.id] || [];
     });
 
     renderGrid(matches, tierAllianceMap);
@@ -970,6 +1002,7 @@ function buildCard(match, tierNum, alliancesPerColor) {
       <div class="seg blue"  style="width:${pct(sc.blue,tot)}%"></div>
       <div class="seg green" style="width:${pct(sc.green,tot)}%"></div>
     </div>
+    ${buildKdChart(match._kdSeries, match.id)}
     ${['red','blue','green'].map(color => {
       const alliances = (alliancesPerColor || {})[color] || [];
       const sorted = [...alliances].sort((a,b) => {
@@ -1047,6 +1080,91 @@ function buildCard(match, tierNum, alliancesPerColor) {
       </div>`;
     }).join('')}`;
   return card;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KD CHART — SVG line chart
+// ═══════════════════════════════════════════════════════════════
+function buildKdChart(series, matchId) {
+  if (!series || series.length < 2) {
+    return `<div class="kd-chart-wrap">
+      <div class="kd-chart-title">K/D · last 2h</div>
+      <div style="text-align:center;padding:.5rem 0;font-family:var(--font-body);font-style:italic;font-size:.8rem;color:var(--muted)">Collecting data…</div>
+    </div>`;
+  }
+
+  const W = 300, H = 80, PAD = { t:8, r:8, b:18, l:28 };
+  const cW = W - PAD.l - PAD.r;
+  const cH = H - PAD.t - PAD.b;
+
+  // Collect all valid KD values to set Y scale
+  const allVals = [];
+  series.forEach(pt => {
+    ['red','blue','green'].forEach(c => {
+      if (pt[matchId]?.[c] !== null && pt[matchId]?.[c] !== undefined) allVals.push(pt[matchId][c]);
+    });
+  });
+  if (!allVals.length) return '';
+
+  const minV = Math.max(0, Math.min(...allVals) - 0.2);
+  const maxV = Math.max(...allVals) + 0.2;
+  const range = maxV - minV || 1;
+
+  // X: oldest point (largest t) on left, t=0 (now) on right
+  const maxT  = Math.max(...series.map(p => p.t));
+
+  const toX = t  => PAD.l + ((maxT - t) / (maxT || 1)) * cW;
+  const toY = v  => PAD.t + (1 - (v - minV) / range) * cH;
+
+  const colors = { red: '#ff7060', blue: '#60c0ff', green: '#50e090' };
+
+  let paths = '';
+  let dots  = '';
+  ['red','blue','green'].forEach(color => {
+    const pts = series
+      .map(pt => ({ t: pt.t, v: pt[matchId]?.[color] }))
+      .filter(p => p.v !== null && p.v !== undefined);
+    if (pts.length < 2) return;
+
+    const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${toX(p.t).toFixed(1)},${toY(p.v).toFixed(1)}`).join(' ');
+    paths += `<path d="${d}" fill="none" stroke="${colors[color]}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>`;
+
+    // Last dot
+    const last = pts[pts.length - 1];
+    dots += `<circle cx="${toX(last.t).toFixed(1)}" cy="${toY(last.v).toFixed(1)}" r="2.5" fill="${colors[color]}"/>`;
+  });
+
+  // Y axis labels
+  const yLabels = [minV, (minV + maxV) / 2, maxV].map(v => {
+    const y = toY(v);
+    return `<text x="${PAD.l - 4}" y="${y.toFixed(1)}" text-anchor="end" dominant-baseline="middle" fill="#504870" font-size="7" font-family="monospace">${v.toFixed(1)}</text>`;
+  }).join('');
+
+  // X axis labels (time)
+  const xLabels = series
+    .filter((_, i) => i === 0 || i === Math.floor(series.length / 2) || i === series.length - 1)
+    .map(pt => {
+      const x = toX(pt.t);
+      const label = pt.t === 0 ? 'now' : `-${pt.t}m`;
+      return `<text x="${x.toFixed(1)}" y="${(H - 4).toFixed(1)}" text-anchor="middle" fill="#504870" font-size="7" font-family="monospace">${label}</text>`;
+    }).join('');
+
+  // Baseline at KD=1
+  const baseY = toY(1).toFixed(1);
+  const baseline = minV < 1 && maxV > 1
+    ? `<line x1="${PAD.l}" y1="${baseY}" x2="${PAD.l + cW}" y2="${baseY}" class="kd-chart-baseline"/>`
+    : '';
+
+  return `<div class="kd-chart-wrap">
+    <div class="kd-chart-title">K/D · last 2h</div>
+    <svg class="kd-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      ${baseline}
+      ${paths}
+      ${dots}
+      ${yLabels}
+      ${xLabels}
+    </svg>
+  </div>`;
 }
 
 window.addEventListener('DOMContentLoaded', init);
