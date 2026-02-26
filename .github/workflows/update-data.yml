@@ -2,7 +2,7 @@ name: Update WvW Data
 
 on:
   schedule:
-    - cron: '*/10 * * * *'   # every 10 minutes
+    - cron: '*/15 * * * *'   # every 15 minutes
   workflow_dispatch:           # allow manual trigger
 
 jobs:
