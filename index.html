@@ -674,6 +674,59 @@ h1::after {
   stroke-dasharray: 3 3;
 }
 
+/* ── CHART TOOLTIP ── */
+.kd-chart-wrap {
+  position: relative;
+}
+
+.kd-tooltip {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  background: rgba(8,6,17,0.92);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  padding: .25rem .55rem;
+  font-family: var(--font-hud);
+  font-size: .6rem;
+  letter-spacing: .05em;
+  pointer-events: none;
+  z-index: 20;
+  backdrop-filter: blur(4px);
+  min-width: 80px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
+
+.kd-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  line-height: 1.6;
+}
+
+.kd-tooltip-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.kd-tooltip-label {
+  color: var(--text2);
+  flex: 1;
+}
+
+.kd-tooltip-val {
+  font-weight: 600;
+}
+
+.kd-tooltip-time {
+  color: var(--muted);
+  font-size: .52rem;
+  letter-spacing: .08em;
+  margin-bottom: .15rem;
+  text-align: right;
+}
+
 /* ══════════════════════════════════════════════
    K/D STRIP
 ══════════════════════════════════════════════ */
@@ -1039,6 +1092,8 @@ async function init() {
     });
 
     renderGrid(matches, tierAllianceMap);
+    // Init interactive chart tooltips after DOM is updated
+    requestAnimationFrame(() => initChartTooltips());
 
     // ── Countdown usando end_time do primeiro match
     if (matches[0]?.end_time) {
@@ -1222,7 +1277,7 @@ function startCountdown(endDate) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// KD CHART — SVG line chart
+// KD CHART — SVG line chart with hover tooltip
 // ═══════════════════════════════════════════════════════════════
 function buildKdChart(series, matchId) {
   if (!series || series.length < 2) {
@@ -1266,7 +1321,7 @@ function buildKdChart(series, matchId) {
     if (pts.length < 2) return;
 
     const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${toX(p.t).toFixed(1)},${toY(p.v).toFixed(1)}`).join(' ');
-    paths += `<path d="${d}" fill="none" stroke="${colors[color]}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>`;
+    paths += `<path d="${d}" fill="none" stroke="${colors[color]}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.85" class="kd-line kd-line-${color}"/>`;
 
     // Last dot
     const last = pts[pts.length - 1];
@@ -1294,16 +1349,109 @@ function buildKdChart(series, matchId) {
     ? `<line x1="${PAD.l}" y1="${baseY}" x2="${PAD.l + cW}" y2="${baseY}" class="kd-chart-baseline"/>`
     : '';
 
+  // Hover crosshair + tooltip elements (hidden initially)
+  const crosshair = `<line class="kd-crosshair" x1="0" y1="${PAD.t}" x2="0" y2="${PAD.t + cH}" stroke="rgba(255,255,255,0.2)" stroke-width="1" stroke-dasharray="2 2" style="display:none" pointer-events="none"/>`;
+
+  // Encode series data for JS
+  const seriesData = JSON.stringify(series.map(pt => ({
+    t: pt.t,
+    r: pt[matchId]?.red   ?? null,
+    b: pt[matchId]?.blue  ?? null,
+    g: pt[matchId]?.green ?? null,
+  })));
+
   return `<div class="kd-chart-wrap">
     <div class="kd-chart-title">K/D · last 2h</div>
-    <svg class="kd-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    <div class="kd-tooltip" style="display:none"></div>
+    <svg class="kd-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"
+         data-series="${esc(seriesData)}"
+         data-pad-l="${PAD.l}" data-pad-t="${PAD.t}" data-cw="${cW}" data-ch="${cH}"
+         data-maxt="${maxT}" data-minv="${minV.toFixed(4)}" data-range="${range.toFixed(4)}">
       ${baseline}
       ${paths}
       ${dots}
       ${yLabels}
       ${xLabels}
+      ${crosshair}
     </svg>
   </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KD CHART — Interactive hover tooltip
+// ═══════════════════════════════════════════════════════════════
+function initChartTooltips() {
+  document.querySelectorAll('.kd-chart').forEach(svg => {
+    const wrap    = svg.parentElement;
+    const tooltip = wrap.querySelector('.kd-tooltip');
+    const cross   = svg.querySelector('.kd-crosshair');
+    if (!tooltip || !cross) return;
+
+    const series  = JSON.parse(svg.dataset.series || '[]');
+    const padL    = parseFloat(svg.dataset.padL);
+    const cw      = parseFloat(svg.dataset.cw);
+    const maxT    = parseFloat(svg.dataset.maxt);
+
+    if (!series.length) return;
+
+    // Map from SVG viewBox X to closest data point
+    function getClosestPoint(svgX) {
+      // svgX is in viewBox units (0..300)
+      const tAtX = maxT - ((svgX - padL) / cw) * maxT;
+      let best = null, bestDist = Infinity;
+      series.forEach(pt => {
+        const d = Math.abs(pt.t - tAtX);
+        if (d < bestDist) { bestDist = d; best = pt; }
+      });
+      return best;
+    }
+
+    function getVBX(e) {
+      const rect   = svg.getBoundingClientRect();
+      const scaleX = 300 / rect.width; // viewBox width = 300
+      return (e.clientX - rect.left) * scaleX;
+    }
+
+    svg.addEventListener('mousemove', e => {
+      const vbX = getVBX(e);
+      // Only show tooltip within chart area
+      if (vbX < padL || vbX > padL + cw) {
+        tooltip.style.display = 'none';
+        cross.style.display = 'none';
+        return;
+      }
+
+      const pt = getClosestPoint(vbX);
+      if (!pt) return;
+
+      cross.setAttribute('x1', vbX.toFixed(1));
+      cross.setAttribute('x2', vbX.toFixed(1));
+      cross.style.display = '';
+
+      const timeLabel = pt.t === 0 ? 'now' : `-${pt.t}m`;
+      const fmtKD = v => v === null ? '—' : v.toFixed(2);
+
+      const colorMap = { r: '#ff7060', b: '#60c0ff', g: '#50e090' };
+      const labelMap = { r: 'Red', b: 'Blue', g: 'Green' };
+
+      const rows = ['r','b','g'].map(k => {
+        const val = fmtKD(pt[k]);
+        return `<div class="kd-tooltip-row">
+          <div class="kd-tooltip-dot" style="background:${colorMap[k]}"></div>
+          <span class="kd-tooltip-label">${labelMap[k]}</span>
+          <span class="kd-tooltip-val" style="color:${colorMap[k]}">${val}</span>
+        </div>`;
+      }).join('');
+
+      tooltip.innerHTML = `<div class="kd-tooltip-time">${timeLabel}</div>${rows}`;
+      tooltip.style.display = 'block';
+    });
+
+    svg.addEventListener('mouseleave', () => {
+      tooltip.style.display = 'none';
+      cross.style.display = 'none';
+    });
+  });
 }
 
 window.addEventListener('DOMContentLoaded', init);

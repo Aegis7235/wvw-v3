@@ -67,15 +67,21 @@ async function binGet(url) {
   } catch { return null; }
 }
 
-async function binPut(url, data) {
+async function binPut(url, data, retries = 3) {
   const body = JSON.stringify(data);
   console.log(`PUT ${url} (${body.length} bytes)`);
-  const r = await fetch(url, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'X-Master-Key': BIN_KEY, 'X-Bin-Versioning': 'false' },
-    body,
-  });
-  if (!r.ok) { const t = await r.text(); throw new Error(`JSONBin PUT failed: ${r.status} ${t}`); }
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    const r = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': BIN_KEY, 'X-Bin-Versioning': 'false' },
+      body,
+    });
+    if (r.ok) return;
+    const t = await r.text();
+    console.error(`JSONBin PUT attempt ${attempt}/${retries} failed: ${r.status} ${t}`);
+    if (attempt < retries) await new Promise(res => setTimeout(res, 2000 * attempt));
+    else throw new Error(`JSONBin PUT failed after ${retries} attempts: ${r.status} ${t}`);
+  }
 }
 
 (async () => {
@@ -162,14 +168,16 @@ async function binPut(url, data) {
   });
 
   // 6. K/D delta against oldest snapshot (~2h)
+  // Use oldSnap as long as it exists (even if < 10min), so the UI always shows something.
+  // The UI already labels the window with actual minutes, so stale data is visible to the user.
   const kdDelta = {};
-  if (oldSnap && oldMinutes >= 10) {
+  if (oldSnap) {
     matches.forEach(m => {
       kdDelta[m.id] = {};
       ['red','blue','green'].forEach(color => {
         const kills  = Math.max(0, (nowKills[m.id][color]  || 0) - (oldSnap.kills[m.id]?.[color]  || 0));
         const deaths = Math.max(0, (nowDeaths[m.id][color] || 0) - (oldSnap.deaths[m.id]?.[color] || 0));
-        kdDelta[m.id][color] = { kills, deaths, minutes: oldMinutes };
+        kdDelta[m.id][color] = { kills, deaths, minutes: Math.max(1, oldMinutes) };
       });
     });
   }
