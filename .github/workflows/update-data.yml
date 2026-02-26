@@ -8,6 +8,10 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write          # needed to commit guild_id_cache.json
+
     steps:
       - uses: actions/checkout@v4
 
@@ -18,9 +22,22 @@ jobs:
       - name: Install dependencies
         run: npm install node-fetch@3 papaparse
 
+      - name: Create guild_id_cache.json if missing
+        run: |
+          if [ ! -f guild_id_cache.json ]; then
+            echo "{}" > guild_id_cache.json
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add guild_id_cache.json
+            git commit -m "chore: init guild_id_cache.json"
+            git push
+          fi
+
       - name: Fetch & save data
         env:
-          JSONBIN_KEY: ${{ secrets.JSONBIN_KEY }}
-          JSONBIN_BIN_ID: ${{ secrets.JSONBIN_BIN_ID }}
-          JSONBIN_HIST_ID: ${{ secrets.JSONBIN_HIST_ID }}
+          JSONBIN_KEY:        ${{ secrets.JSONBIN_KEY }}
+          JSONBIN_BIN_ID:     ${{ secrets.JSONBIN_BIN_ID }}
+          JSONBIN_HIST_ID:    ${{ secrets.JSONBIN_HIST_ID }}
+          GITHUB_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY:  ${{ github.repository }}
         run: node fetch-data.js
