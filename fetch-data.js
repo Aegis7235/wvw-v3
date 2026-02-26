@@ -11,6 +11,7 @@ const BIN_HIST_URL = `https://api.jsonbin.io/v3/b/${BIN_HIST_ID}`;
 
 const MAX_SNAPSHOTS  = 12;
 const SHEET_URL      = 'https://docs.google.com/spreadsheets/d/1Txjpcet-9FDVek6uJ0N3OciwgbpE0cfWozUK7ATfWx4/export?format=csv&gid=1120510750';
+const SOLO_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1Txjpcet-9FDVek6uJ0N3OciwgbpE0cfWozUK7ATfWx4/export?format=csv&gid=768688698';
 const MY_ALLIANCE_ID = '4F2CA889-AA1F-EF11-81AB-F50023EE1BF3';
 
 const WVW_TEAM_NAMES = {
@@ -59,6 +60,42 @@ function parseSheet(csvText) {
   return alliances;
 }
 
+
+// Parses the Solo Guilds sheet (gid=768688698)
+// Returns an array of { guildName, guildId, worldName } — one entry per guild.
+// Skips rows where API Mismatch = TRUE or World is empty.
+function parseSoloGuilds(csvText) {
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const rows = Papa.parse(csvText, { skipEmptyLines: true }).data;
+  const guilds = [];
+
+  for (const cols of rows) {
+    if (!cols || cols.length < 20) continue;
+
+    const guildName = cols[0].trim();
+    // Skip header rows, empty names, or section title rows
+    if (!guildName || /^(solo guilds|𝐒𝐨𝐥𝐨)/i.test(guildName)) continue;
+    // Skip rows where name starts with TRUE/FALSE (junk rows)
+    if (/^(TRUE|FALSE)$/i.test(guildName)) continue;
+
+    // Col 18 = Guild API ID
+    const guildId = (cols[18] || '').trim();
+    if (!UUID_RE.test(guildId)) continue;
+
+    // Col 19 = API Mismatch — skip if TRUE
+    const apiMismatch = (cols[19] || '').trim().toUpperCase();
+    if (apiMismatch === 'TRUE') continue;
+
+    // Col 21 = World name — skip if empty
+    const worldName = (cols[21] || '').trim();
+    if (!worldName) continue;
+
+    guilds.push({ guildName, guildId: guildId.toUpperCase(), worldName });
+  }
+
+  return guilds;
+}
+
 async function binGet(url) {
   try {
     const r = await fetch(url + '/latest', { headers: { 'X-Master-Key': BIN_KEY } });
@@ -98,11 +135,12 @@ async function binPut(url, data, retries = 3) {
   console.log(`History: ${snapshots.length} snapshots, oldest ~${oldMinutes}min ago`);
 
   // 2. Fetch GW2 data
-  const [allMatchIds, worldsRaw, naWvWGuilds, csvText, ddbrGuildData] = await Promise.all([
+  const [allMatchIds, worldsRaw, naWvWGuilds, csvText, soloCsvText, ddbrGuildData] = await Promise.all([
     gw2('/wvw/matches'),
     gw2('/worlds?ids=all'),
     gw2('/wvw/guilds/na'),
     fetch(SHEET_URL).then(r => r.text()),
+    fetch(SOLO_SHEET_URL).then(r => r.text()),
     fetch(`${GW2}/guild/${MY_ALLIANCE_ID}`).then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
 
@@ -141,6 +179,51 @@ async function binPut(url, data, retries = 3) {
       if (wid && worldNames[String(wid)]) a.worldName = worldNames[String(wid)];
       tierAllianceMap[team.matchId][team.color].push(a);
     }
+  });
+
+  // 4b. Parse and place Solo Guilds
+  const soloGuilds = parseSoloGuilds(soloCsvText);
+  console.log(`Solo guilds parsed: ${soloGuilds.length}`);
+
+  // Group solo guilds by world → build one "[Solo Guilds]" alliance entry per team/color
+  // Key: matchId|color → array of guild names
+  const soloByTeam = {};
+  naIds.forEach(id => { soloByTeam[id] = { red:[], blue:[], green:[] }; });
+
+  const norm2 = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  soloGuilds.forEach(g => {
+    // Try to resolve via naWvWGuilds API first
+    let team = null;
+    const apiWorld = naWvWGuilds?.[g.guildId.toUpperCase()]
+                  || naWvWGuilds?.[g.guildId.toLowerCase()]
+                  || naWvWGuilds?.[g.guildId];
+    if (apiWorld) team = worldIdToTeam[String(apiWorld)];
+
+    // Fall back to worldName column
+    if (!team && g.worldName) {
+      const normTarget = norm2(g.worldName);
+      const matchedWid = Object.keys(worldNames).find(wid => norm2(worldNames[wid]) === normTarget);
+      if (matchedWid) team = worldIdToTeam[matchedWid];
+    }
+
+    if (team && soloByTeam[team.matchId]) {
+      soloByTeam[team.matchId][team.color].push(g.guildName);
+    }
+  });
+
+  // Inject one "[Solo Guilds]" alliance block per team that has at least one guild
+  naIds.forEach(matchId => {
+    ['red','blue','green'].forEach(color => {
+      const guilds = soloByTeam[matchId][color];
+      if (!guilds.length) return;
+      tierAllianceMap[matchId][color].push({
+        allianceId:   `SOLO_${matchId}_${color}`,
+        allianceName: '[Solo Guilds]',
+        memberGuilds: guilds,
+        worldName:    '',
+        isSolo:       true,
+      });
+    });
   });
 
   const ddbrWorldId = naWvWGuilds?.[MY_ALLIANCE_ID.toUpperCase()]
@@ -242,5 +325,5 @@ async function binPut(url, data, retries = 3) {
     primaryWorlds,
   });
 
-  console.log(`Done. ${naIds.length} matches, ${allianceData.length} alliances, K/D window ~${oldMinutes}min`);
+  console.log(`Done. ${naIds.length} matches, ${allianceData.length} alliances, ${soloGuilds.length} solo guilds, K/D window ~${oldMinutes}min`);
 })();
