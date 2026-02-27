@@ -141,35 +141,85 @@ function parseRunSchedule(csvText) {
 // Normalise a string for fuzzy comparison: lowercase, strip non-alphanumeric
 const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 
+// Extract tag from a string like "Guild Name [TAG]" → "TAG" (uppercased), or ""
+function extractTag(s) {
+  const m = s.match(/\[(.+?)\]/);
+  return m ? m[1].trim().toUpperCase() : '';
+}
+
+// Strip tag bracket from a string: "Guild Name [TAG]" → "Guild Name"
+function stripTag(s) {
+  return s.replace(/\s*\[.+?\]\s*/, '').trim();
+}
+
 /**
  * Given the fully-built tierAllianceMap and the list of schedule guilds,
  * resolve each guild's matchId + color by looking up its name inside
  * the memberGuilds arrays of every alliance already on the page.
  *
- * Returns: { matchId, color, allianceName } | null per guild.
+ * Matching strategy (in order of priority):
+ *   1. norm(memberName with tag stripped)  === norm(g.guild)   [name-only match]
+ *   2. norm(memberName full)               === norm(g.guild)   [in case sheet has no tag]
+ *   3. extractTag(memberName)              === g.tag           [tag-only match, last resort]
+ *
+ * Multiple keys are stored per memberName so any of the above can hit.
+ *
+ * Returns array with same order as scheduleGuilds, each enriched with
+ * { matchId, color, allianceName } or nulls if not found.
  */
 function resolveScheduleGuildsByName(scheduleGuilds, tierAllianceMap) {
-  // Build a flat lookup: normalisedGuildName → { matchId, color, allianceName }
-  const lookup = new Map();
+  // Two lookup maps:
+  //   byName: norm(name-without-tag) → hit
+  //   byTag:  UPPER(tag)             → hit  (only used as last-resort fallback)
+  const byName = new Map();
+  const byTag  = new Map();
 
   for (const [matchId, colorMap] of Object.entries(tierAllianceMap)) {
     for (const [color, alliances] of Object.entries(colorMap)) {
       for (const alliance of alliances) {
-        if (alliance.isSolo) continue; // skip solo-guilds blocks
+        if (alliance.isSolo) continue;
+        const hit = { matchId, color, allianceName: alliance.allianceName };
+
         for (const memberName of (alliance.memberGuilds || [])) {
-          const key = norm(memberName);
-          if (key) {
-            lookup.set(key, { matchId, color, allianceName: alliance.allianceName });
-          }
+          if (!memberName) continue;
+
+          // Key 1: name without tag, normalised
+          const nameOnly = norm(stripTag(memberName));
+          if (nameOnly && !byName.has(nameOnly)) byName.set(nameOnly, hit);
+
+          // Key 2: full string normalised (covers case where there is no tag in memberName)
+          const full = norm(memberName);
+          if (full && !byName.has(full)) byName.set(full, hit);
+
+          // Key 3: tag (upper) — stored separately, used only as fallback
+          const tag = extractTag(memberName);
+          if (tag && !byTag.has(tag)) byTag.set(tag, hit);
         }
       }
     }
   }
 
+  // Print lookup size to help diagnose
+  console.log(`Alliance name lookup: ${byName.size} name keys, ${byTag.size} tag keys`);
+
   return scheduleGuilds.map(g => {
-    const hit = lookup.get(norm(g.guild));
-    return hit ? { ...g, matchId: hit.matchId, color: hit.color, allianceName: hit.allianceName }
-               : { ...g, matchId: null, color: null, allianceName: null };
+    // Strategy 1 & 2: match by normalised guild name
+    const nameKey = norm(g.guild);
+    let hit = byName.get(nameKey);
+
+    // Strategy 3: match by tag (only if tag exists and name didn't match)
+    if (!hit && g.tag) {
+      hit = byTag.get(g.tag.toUpperCase());
+      if (hit) console.log(`  [tag-match] "${g.guild}" [${g.tag}] → ${hit.allianceName} (${hit.color})`);
+    }
+
+    if (!hit) {
+      console.log(`  [UNKNOWN] "${g.guild}" [${g.tag}] — not found in any alliance`);
+    }
+
+    return hit
+      ? { ...g, matchId: hit.matchId, color: hit.color, allianceName: hit.allianceName }
+      : { ...g, matchId: null, color: null, allianceName: null };
   });
 }
 
@@ -318,6 +368,25 @@ async function binPut(url, data, retries = 3) {
   // 4c. Parse run schedule and resolve teams by guild name lookup in the page data
   const scheduleGuildsRaw = parseRunSchedule(scheduleCsvText);
   console.log(`Schedule guilds parsed: ${scheduleGuildsRaw.length}`);
+  // Diagnostic: show first 5 schedule guild names/tags so we can verify format
+  console.log('Schedule sample:', scheduleGuildsRaw.slice(0, 5).map(g => `"${g.guild}" [${g.tag}]`).join(' | '));
+
+  // Diagnostic: show first 20 memberGuild entries across all alliances so we can verify format
+  const sampleMembers = [];
+  for (const colorMap of Object.values(tierAllianceMap)) {
+    for (const alliances of Object.values(colorMap)) {
+      for (const a of alliances) {
+        for (const mg of (a.memberGuilds || [])) {
+          sampleMembers.push(mg);
+          if (sampleMembers.length >= 20) break;
+        }
+        if (sampleMembers.length >= 20) break;
+      }
+      if (sampleMembers.length >= 20) break;
+    }
+    if (sampleMembers.length >= 20) break;
+  }
+  console.log('Alliance memberGuilds sample:', sampleMembers.map(s => `"${s}"`).join(' | '));
 
   // Resolve each schedule guild's team by finding its name inside tierAllianceMap.memberGuilds.
   // No API calls needed — the page already knows which alliance (and therefore which team/color)
