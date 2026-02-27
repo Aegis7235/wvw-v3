@@ -668,6 +668,402 @@ h1::after {
 }
 
 /* ══════════════════════════════════════════════
+   TIMELINE
+══════════════════════════════════════════════ */
+#timeline-section {
+  position: relative; z-index: 5;
+  max-width: 1580px;
+  margin: 0 auto 4rem;
+  padding: 0 1.5rem;
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2rem 0 1rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+
+.timeline-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+
+.timeline-icon {
+  font-size: 1.2rem;
+  color: var(--gold);
+  filter: drop-shadow(0 0 8px var(--gold-glow));
+}
+
+.timeline-title {
+  font-family: var(--font-hud);
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+
+.timeline-sub {
+  font-family: var(--font-body);
+  font-size: .78rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.timeline-controls {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.tl-btn {
+  font-family: var(--font-hud);
+  font-size: .6rem;
+  letter-spacing: .1em;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line2);
+  background: rgba(255,255,255,0.03);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all .15s;
+  border-radius: var(--radius-sm);
+}
+.tl-btn:hover { border-color: var(--gold-dim); color: var(--gold); background: var(--gold-ghost); }
+.tl-today { border-color: var(--gold-dim); color: var(--gold); }
+
+.tl-now-label {
+  font-family: var(--font-hud);
+  font-size: .6rem;
+  color: var(--text2);
+  letter-spacing: .08em;
+  min-width: 80px;
+  text-align: center;
+}
+
+/* ── Tier timeline block ── */
+.tl-tier {
+  margin-bottom: 1.5rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.tl-tier-head {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .6rem 1rem;
+  background: linear-gradient(135deg, rgba(40,30,80,0.8) 0%, rgba(20,18,40,0.6) 100%);
+  border-bottom: 1px solid var(--line);
+}
+
+.tl-tier-num {
+  font-family: var(--font-hud);
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: var(--gold);
+  background: linear-gradient(135deg, var(--gold-dim), var(--gold2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.tl-tier-label {
+  font-family: var(--font-ui);
+  font-size: .82rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  color: var(--text2);
+  text-transform: uppercase;
+}
+
+/* ── Timeline scroll container ── */
+.tl-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line2) transparent;
+  position: relative;
+}
+.tl-scroll::-webkit-scrollbar { height: 4px; }
+.tl-scroll::-webkit-scrollbar-track { background: transparent; }
+.tl-scroll::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 2px; }
+
+.tl-canvas {
+  position: relative;
+  min-height: 40px;
+}
+
+/* ── Hour axis ── */
+.tl-axis {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.tl-axis-label {
+  font-family: var(--font-ui);
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--text2);
+  letter-spacing: .03em;
+  text-align: center;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  padding: .3rem 0;
+  flex-shrink: 0;
+}
+.tl-axis-label.tl-axis-midnight {
+  color: var(--gold);
+  font-weight: 700;
+  border-right: 2px solid rgba(212,169,66,0.4);
+  background: rgba(212,169,66,0.05);
+}
+/* Day label row above hour axis */
+.tl-axis-day {
+  display: flex;
+  border-bottom: 1px solid var(--line2);
+  position: sticky;
+  top: 0;
+  background: var(--abyss);
+  z-index: 4;
+}
+.tl-axis-day-cell {
+  font-family: var(--font-hud);
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: .2rem 0;
+  color: var(--gold);
+  border-right: 2px solid rgba(212,169,66,0.3);
+  background: rgba(212,169,66,0.06);
+  white-space: nowrap;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.tl-axis-day-cell.tl-day-empty {
+  color: var(--muted);
+  background: transparent;
+  border-right: none;
+  font-weight: 500;
+}
+
+/* ── Color group row ── */
+.tl-color-group {
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+.tl-color-group:last-child { border-bottom: none; }
+
+.tl-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.tl-row {
+  display: flex;
+  align-items: center;
+  position: relative;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  min-height: 28px;
+}
+.tl-row:last-child { border-bottom: none; }
+
+.tl-row-label {
+  font-family: var(--font-ui);
+  font-size: .78rem;
+  font-weight: 500;
+  color: var(--text2);
+  padding: .25rem .75rem;
+  white-space: nowrap;
+  position: sticky;
+  left: 0;
+  background: var(--panel);
+  z-index: 2;
+  border-right: 1px solid var(--line);
+  min-width: 160px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tl-row-label .tl-tag {
+  font-family: var(--font-hud);
+  font-size: .5rem;
+  color: var(--muted);
+  margin-left: .3rem;
+  letter-spacing: .05em;
+}
+
+.tl-row-track {
+  position: relative;
+  flex: 1;
+  height: 28px;
+  overflow: visible;
+}
+
+/* ── Bars ── */
+.tl-bar {
+  position: absolute;
+  top: 4px;
+  height: 20px;
+  border-radius: 3px;
+  opacity: 0.85;
+  cursor: pointer;
+  transition: opacity .15s, filter .15s;
+  display: flex;
+  align-items: center;
+  padding: 0 .4rem;
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: var(--font-hud);
+  font-size: .52rem;
+  letter-spacing: .05em;
+  font-weight: 600;
+}
+.tl-bar:hover { opacity: 1; filter: brightness(1.2); }
+/* Unknown-team bars */
+.tl-bar.tl-unknown {
+  background: linear-gradient(90deg, #4a4060, #6a5a80);
+  color: #c0b0e0;
+  border: 1px solid rgba(180,160,220,0.3);
+}
+.tl-tier-unknown .tl-tier-head { border-left: 3px solid #6a5a80; }
+.tl-color-group.unknown { border-left: 3px solid #6a5a80; }
+
+.tl-bar.tl-active {
+  opacity: 1;
+  box-shadow: 0 0 8px currentColor;
+  animation: tl-pulse 2s ease-in-out infinite;
+}
+@keyframes tl-pulse {
+  0%,100% { box-shadow: 0 0 4px currentColor; }
+  50%      { box-shadow: 0 0 14px currentColor; }
+}
+.tl-bar.tl-red   { background: linear-gradient(90deg, var(--red), var(--red-mid)); color: #fff; }
+.tl-bar.tl-blue  { background: linear-gradient(90deg, var(--blue), var(--blue-mid)); color: #fff; }
+.tl-bar.tl-green { background: linear-gradient(90deg, var(--green), var(--green-mid)); color: #fff; }
+.tl-bar.tl-tbc   { background: repeating-linear-gradient(45deg, var(--line2), var(--line2) 4px, var(--rim) 4px, var(--rim) 8px); color: var(--muted); }
+
+/* ── Now line ── */
+.tl-now-line {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: var(--gold2);
+  box-shadow: 0 0 6px 2px var(--gold-glow), 0 0 18px 4px rgba(240,200,106,0.35), 0 0 40px 8px rgba(212,169,66,0.15);
+  z-index: 4;
+  pointer-events: none;
+  animation: now-line-pulse 2s ease-in-out infinite;
+}
+@keyframes now-line-pulse {
+  0%,100% { box-shadow: 0 0 6px 2px rgba(212,169,66,0.5), 0 0 18px 4px rgba(240,200,106,0.3), 0 0 40px 8px rgba(212,169,66,0.12); }
+  50%      { box-shadow: 0 0 10px 4px rgba(212,169,66,0.9), 0 0 28px 8px rgba(240,200,106,0.55), 0 0 60px 16px rgba(212,169,66,0.25); }
+}
+.tl-now-line::before {
+  content: '▼';
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: .55rem;
+  color: var(--gold2);
+  filter: drop-shadow(0 0 4px var(--gold));
+}
+
+/* ── Tooltip ── */
+.tl-tooltip {
+  position: fixed;
+  background: rgba(8,6,17,0.96);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius);
+  padding: .5rem .75rem;
+  font-family: var(--font-ui);
+  font-size: .82rem;
+  color: var(--text);
+  pointer-events: none;
+  z-index: 100;
+  display: none;
+  min-width: 160px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+}
+.tl-tooltip-name { font-weight: 600; color: var(--bright); margin-bottom: .2rem; }
+.tl-tooltip-time { color: var(--gold); font-family: var(--font-hud); font-size: .7rem; }
+.tl-tooltip-contacts { color: var(--muted); font-size: .75rem; margin-top: .2rem; font-style: italic; }
+
+/* ── Hour grid lines ── */
+.tl-gridline {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 1px;
+  background: rgba(255,255,255,0.04);
+  pointer-events: none;
+}
+.tl-gridline.tl-gridline-major {
+  background: rgba(255,255,255,0.08);
+}
+.tl-gridline.tl-gridline-midnight {
+  background: rgba(212,169,66,0.35);
+  width: 2px;
+  z-index: 1;
+}
+/* Midnight day label inside track */
+.tl-midnight-label {
+  position: absolute;
+  top: 2px;
+  font-family: var(--font-hud);
+  font-size: .52rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 2;
+  white-space: nowrap;
+  padding-left: 4px;
+}
+
+/* Color band on left of group */
+.tl-color-band {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+}
+.tl-color-group.red  .tl-color-band { background: linear-gradient(180deg, var(--red-mid), var(--red)); }
+.tl-color-group.blue .tl-color-band { background: linear-gradient(180deg, var(--blue-mid), var(--blue)); }
+.tl-color-group.green .tl-color-band { background: linear-gradient(180deg, var(--green-mid), var(--green)); }
+
+.tl-color-group-label {
+  font-family: var(--font-hud);
+  font-size: .42rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  padding: .2rem .5rem .2rem 1rem;
+  border-bottom: 1px solid var(--line);
+  font-weight: 600;
+}
+.tl-color-group.red   .tl-color-group-label { color: var(--red-text);   background: var(--red-glow); }
+.tl-color-group.blue  .tl-color-group-label { color: var(--blue-text);  background: var(--blue-glow); }
+.tl-color-group.green .tl-color-group-label { color: var(--green-text); background: var(--green-glow); }
+
+.tl-empty {
+  font-family: var(--font-body);
+  font-size: .8rem;
+  color: var(--muted);
+  font-style: italic;
+  padding: .5rem 1rem .5rem 1.5rem;
+}
+
+/* ══════════════════════════════════════════════
    KD CHART
 ══════════════════════════════════════════════ */
 .kd-chart-wrap {
@@ -1059,6 +1455,24 @@ h1::after {
   <div class="msg"><span class="spinner"></span> Loading battle data…</div>
 </div>
 
+<!-- ═══ TIMELINE ═══ -->
+<div id="timeline-section" style="display:none">
+  <div class="timeline-header">
+    <div class="timeline-title-wrap">
+      <span class="timeline-icon">⚔</span>
+      <span class="timeline-title">Guild Run Schedule</span>
+      <span class="timeline-sub">Times in BRT (UTC-3)</span>
+    </div>
+    <div class="timeline-controls">
+      <button class="tl-btn" id="tl-prev" onclick="tlScroll(-1)">◀</button>
+      <span class="tl-now-label" id="tl-now-label"></span>
+      <button class="tl-btn" id="tl-next" onclick="tlScroll(1)">▶</button>
+      <button class="tl-btn tl-today" onclick="tlScrollToNow()">Now</button>
+    </div>
+  </div>
+  <div id="timeline-tiers"></div>
+</div>
+
 <!-- ═══ FOOTER ═══ -->
 <footer class="site-footer">
   <div class="footer-inner">
@@ -1107,7 +1521,7 @@ async function init() {
 
     if (!data || !data.matches) throw new Error('Data not ready yet — GitHub Action may not have run. Try again in a minute.');
 
-    const { matches, tierAllianceMap, primaryWorlds, kdDelta, kdSeries, timestamp } = data;
+    const { matches, tierAllianceMap, primaryWorlds, kdDelta, kdSeries, timestamp, scheduleByMatch } = data;
 
     // Attach kdDelta, primaryWorlds and kdSeries into each match object for buildCard
     matches.forEach(m => {
@@ -1119,6 +1533,11 @@ async function init() {
     renderGrid(matches, tierAllianceMap);
     // Init interactive chart tooltips after DOM is updated
     requestAnimationFrame(() => initChartTooltips());
+
+    // Render timeline if schedule data exists
+    if (scheduleByMatch && Object.keys(scheduleByMatch).length) {
+      renderTimeline(matches, scheduleByMatch);
+    }
 
     // ── Countdown usando end_time do primeiro match
     if (matches[0]?.end_time) {
@@ -1405,6 +1824,421 @@ function buildKdChart(series, matchId) {
       ${crosshair}
     </svg>
   </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TIMELINE — Guild Run Schedule
+// ═══════════════════════════════════════════════════════════════
+
+const TL_HOURS    = 48;        // total hours shown
+const TL_COL_W    = 40;        // px per hour
+const TL_LABEL_W  = 160;       // px for guild name column
+const DAYS_EN     = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+let tlOffsetHours = 0; // scroll offset in hours from "now"
+let tlMatches     = [];
+let tlSchedule    = {};
+
+function tlNowBRT() {
+  // BRT = UTC-3
+  const d = new Date(Date.now() - 3 * 3600000);
+  return { h: d.getUTCHours(), m: d.getUTCMinutes(), day: d.getUTCDay() };
+}
+
+function tlTimeToMinutes(str) {
+  // "22:00" → minutes from midnight
+  const [h, m] = str.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function tlParseSlot(utcStr) {
+  // Parse "HH:MM - HH:MM" — schedule sheet is already in BRT, no conversion needed
+  const m = utcStr.match(/^(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})$/);
+  if (!m) return null;
+  const startMin = (+m[1]) * 60 + (+m[2]);
+  const endMin   = (+m[3]) * 60 + (+m[4]);
+  return { startMin, endMin };
+}
+
+function tlBarStyle(startMin, endMin, nowMinutes, crossesMidnight) {
+  // Returns { left, width } as pixel values within a 24h track
+  const totalW = TL_HOURS * TL_COL_W;
+  const dayW   = 24 * TL_COL_W;
+
+  // Offset so "now" is at a fixed position on screen
+  const nowOffset = tlOffsetHours * TL_COL_W;
+
+  // nowMinutes = minutes from midnight BRT right now
+  const startPx = (startMin / 60) * TL_COL_W - nowOffset;
+  let endPx     = (endMin   / 60) * TL_COL_W - nowOffset;
+
+  if (crossesMidnight && endMin < startMin) {
+    endPx += dayW; // crosses midnight
+  }
+
+  return { left: startPx, width: Math.max(4, endPx - startPx) };
+}
+
+function tlIsActive(startMin, endMin) {
+  const { h, m } = tlNowBRT();
+  const nowMin = h * 60 + m;
+  if (endMin > startMin) {
+    return nowMin >= startMin && nowMin < endMin;
+  } else {
+    // crosses midnight
+    return nowMin >= startMin || nowMin < endMin;
+  }
+}
+
+function renderTimeline(matches, scheduleByMatch) {
+  tlMatches  = matches;
+  tlSchedule = scheduleByMatch;
+
+  const section = document.getElementById('timeline-section');
+  section.style.display = 'block';
+
+  buildTimeline();
+  updateNowLine();
+  tlScrollToNow();
+
+  // Update now line every minute
+  setInterval(() => { updateNowLine(); }, 60000);
+  // Update label every minute
+  setInterval(() => { updateTlLabel(); }, 60000);
+  updateTlLabel();
+}
+
+// ── Helper: build a single colour-group row section ──────────────
+function buildColorGroup(guilds, color, day, tooltip, canvasDiv) {
+  if (!guilds || !guilds.length) return;
+
+  const groupDiv = document.createElement('div');
+  groupDiv.className = `tl-color-group ${color}`;
+
+  const band = document.createElement('div');
+  band.className = 'tl-color-band';
+  groupDiv.appendChild(band);
+
+  const groupLabel = document.createElement('div');
+  groupLabel.className = 'tl-color-group-label';
+  groupLabel.textContent = { red:'Red', blue:'Blue', green:'Green', unknown:'?' }[color] || color;
+  groupDiv.appendChild(groupLabel);
+
+  const rowsDiv = document.createElement('div');
+  rowsDiv.className = 'tl-rows';
+
+  guilds.forEach(g => {
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'tl-row';
+
+    // Label
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'tl-row-label';
+    labelDiv.innerHTML = `${esc(g.guild)}${g.tag ? `<span class="tl-tag">[${esc(g.tag)}]</span>` : ''}`;
+    rowDiv.appendChild(labelDiv);
+
+    // Track
+    const trackDiv = document.createElement('div');
+    trackDiv.className = 'tl-row-track';
+    trackDiv.style.width = (TL_HOURS * TL_COL_W) + 'px';
+
+    // Grid lines + midnight separators
+    const { h: _nowH, m: _nowM } = tlNowBRT();
+    const _nowMin = _nowH * 60 + _nowM;
+    for (let h = 0; h <= TL_HOURS; h++) {
+      const absMin  = _nowMin + h * 60 + tlOffsetHours * 60;
+      const hLabel  = Math.floor(((absMin % 1440) + 1440) / 60 % 24);
+      const isMid   = hLabel === 0;
+      const gl = document.createElement('div');
+      gl.className = 'tl-gridline' + (isMid ? ' tl-gridline-midnight' : h % 6 === 0 ? ' tl-gridline-major' : '');
+      gl.style.left = (h * TL_COL_W) + 'px';
+      trackDiv.appendChild(gl);
+    }
+
+    // Draw bars for yesterday, today, tomorrow (48h window)
+    [-1, 0, 1].forEach(dayOffset => {
+      const targetDay = ((day + dayOffset) % 7 + 7) % 7;
+      const daySlot   = g.schedule[DAYS_EN[targetDay]];
+      if (!daySlot || daySlot.utc === 'TBC') {
+        if (daySlot?.utc === 'TBC') {
+          const bar = buildBar(g, null, color, true, dayOffset, tooltip);
+          if (bar) trackDiv.appendChild(bar);
+        }
+        return;
+      }
+      const parsed = tlParseSlot(daySlot.utc);
+      if (!parsed) return;
+      const bar = buildBar(g, parsed, color, false, dayOffset, tooltip);
+      if (bar) trackDiv.appendChild(bar);
+    });
+
+    rowDiv.appendChild(trackDiv);
+    rowsDiv.appendChild(rowDiv);
+  });
+
+  groupDiv.appendChild(rowsDiv);
+  canvasDiv.appendChild(groupDiv);
+}
+
+function buildTimeline() {
+  const container = document.getElementById('timeline-tiers');
+  container.innerHTML = '';
+
+  // Create tooltip element
+  let tooltip = document.getElementById('tl-tooltip');
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.id = 'tl-tooltip';
+    tooltip.className = 'tl-tooltip';
+    document.body.appendChild(tooltip);
+  }
+
+  const { day } = tlNowBRT();
+
+  // ── Per-tier blocks (red / blue / green) ──────────────────────
+  tlMatches.forEach((match, idx) => {
+    const tierNum    = idx + 1;
+    const matchSched = (tlSchedule[match.id] || {});
+
+    const tierDiv = document.createElement('div');
+    tierDiv.className = 'tl-tier';
+    tierDiv.id = `tl-tier-${match.id}`;
+
+    tierDiv.innerHTML = `
+      <div class="tl-tier-head">
+        <span class="tl-tier-num">${String(tierNum).padStart(2,'0')}</span>
+        <span class="tl-tier-label">Tier · Run Schedule</span>
+      </div>`;
+
+    const scrollDiv = document.createElement('div');
+    scrollDiv.className = 'tl-scroll';
+    scrollDiv.id = `tl-scroll-${match.id}`;
+
+    const totalW = TL_HOURS * TL_COL_W + TL_LABEL_W;
+    const canvasDiv = document.createElement('div');
+    canvasDiv.className = 'tl-canvas';
+    canvasDiv.style.width = totalW + 'px';
+
+    canvasDiv.appendChild(buildAxis());
+
+    ['red','blue','green'].forEach(color => {
+      buildColorGroup(matchSched[color], color, day, tooltip, canvasDiv);
+    });
+
+    if (!['red','blue','green'].some(c => (matchSched[c]||[]).length)) {
+      const empty = document.createElement('div');
+      empty.className = 'tl-empty';
+      empty.textContent = 'No schedule data for this tier yet.';
+      canvasDiv.appendChild(empty);
+    }
+
+    scrollDiv.appendChild(canvasDiv);
+    tierDiv.appendChild(scrollDiv);
+    container.appendChild(tierDiv);
+  });
+
+  // ── Unknown-team block (guilds not found on the alliance page) ─
+  const unknownGuilds = (tlSchedule['unknown'] || {}).unknown || [];
+  if (unknownGuilds.length) {
+    const tierDiv = document.createElement('div');
+    tierDiv.className = 'tl-tier tl-tier-unknown';
+    tierDiv.id = 'tl-tier-unknown';
+
+    tierDiv.innerHTML = `
+      <div class="tl-tier-head tl-tier-head-unknown">
+        <span class="tl-tier-num" style="font-size:.7rem;letter-spacing:.1em">??</span>
+        <span class="tl-tier-label">Unknown Team · not found on alliance page</span>
+      </div>`;
+
+    const scrollDiv = document.createElement('div');
+    scrollDiv.className = 'tl-scroll';
+    scrollDiv.id = 'tl-scroll-unknown';
+
+    const totalW = TL_HOURS * TL_COL_W + TL_LABEL_W;
+    const canvasDiv = document.createElement('div');
+    canvasDiv.className = 'tl-canvas';
+    canvasDiv.style.width = totalW + 'px';
+
+    canvasDiv.appendChild(buildAxis());
+    buildColorGroup(unknownGuilds, 'unknown', day, tooltip, canvasDiv);
+
+    scrollDiv.appendChild(canvasDiv);
+    tierDiv.appendChild(scrollDiv);
+    container.appendChild(tierDiv);
+  }
+}
+
+function buildAxis() {
+  const { h: nowH, m: nowM } = tlNowBRT();
+  const nowMin = nowH * 60 + nowM;
+
+  const DAYS_PT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const { day: nowDay } = tlNowBRT();
+
+  // ── Day label row ──────────────────────────────────────────────
+  const dayRow = document.createElement('div');
+  dayRow.className = 'tl-axis-day';
+  dayRow.style.paddingLeft = TL_LABEL_W + 'px';
+
+  // For each hour slot, detect midnight crossings to place day labels
+  // We track which "day block" each slot belongs to and render a spanning cell
+  const dayBlocks = []; // { label, startCol, width (hours) }
+  let curDay = null, curStart = 0;
+  for (let i = 0; i < TL_HOURS; i++) {
+    const absMin = nowMin + i * 60 + tlOffsetHours * 60;
+    const h = Math.floor(((absMin % 1440) + 1440) / 60 % 24);
+    const dayOffset = Math.floor((absMin + (24 - nowH) * 60 - nowM) / 1440);
+    const slotDay = ((nowDay + Math.floor((absMin) / 1440)) % 7 + 7) % 7;
+    if (slotDay !== curDay) {
+      if (curDay !== null) dayBlocks.push({ label: DAYS_PT[curDay], startCol: curStart, cols: i - curStart });
+      curDay = slotDay;
+      curStart = i;
+    }
+  }
+  if (curDay !== null) dayBlocks.push({ label: DAYS_PT[curDay], startCol: curStart, cols: TL_HOURS - curStart });
+
+  dayBlocks.forEach(b => {
+    const cell = document.createElement('div');
+    cell.className = 'tl-axis-day-cell' + (b.cols < 3 ? ' tl-day-empty' : '');
+    cell.style.width    = (b.cols * TL_COL_W) + 'px';
+    cell.style.minWidth = (b.cols * TL_COL_W) + 'px';
+    cell.textContent = b.label;
+    dayRow.appendChild(cell);
+  });
+
+  // ── Hour label row ─────────────────────────────────────────────
+  const axisDiv = document.createElement('div');
+  axisDiv.className = 'tl-axis';
+  axisDiv.style.paddingLeft = TL_LABEL_W + 'px';
+
+  for (let i = 0; i < TL_HOURS; i++) {
+    const absMin = nowMin + i * 60 + tlOffsetHours * 60;
+    const hLabel = Math.floor(((absMin % 1440) + 1440) / 60 % 24);
+    const isMidnight = hLabel === 0;
+    const label = String(hLabel).padStart(2,'0') + ':00';
+
+    const cell = document.createElement('div');
+    cell.className = 'tl-axis-label' + (isMidnight ? ' tl-axis-midnight' : '');
+    cell.style.width    = TL_COL_W + 'px';
+    cell.style.minWidth = TL_COL_W + 'px';
+    cell.textContent = label;
+    axisDiv.appendChild(cell);
+  }
+
+  // Wrap both rows in a fragment
+  const wrap = document.createElement('div');
+  wrap.style.position = 'sticky';
+  wrap.style.top = '0';
+  wrap.style.zIndex = '4';
+  wrap.appendChild(dayRow);
+  wrap.appendChild(axisDiv);
+  return wrap;
+}
+
+function buildBar(guild, parsed, color, isTbc, dayOffset, tooltip) {
+  const { h: nowH, m: nowM } = tlNowBRT();
+  const nowMin = nowH * 60 + nowM;
+
+  let left, width, active = false;
+
+  if (isTbc) {
+    // TBC: show a small hatched bar in the middle of the track
+    left  = TL_COL_W * 2;
+    width = TL_COL_W * 4;
+  } else {
+    const { startMin, endMin } = parsed;
+    const crossesMidnight = endMin <= startMin;
+
+    // Convert bar start/end to pixels relative to "now" on screen
+    // dayOffset: -1=yesterday, 0=today, 1=tomorrow
+    const dayOffsetMin = dayOffset * 1440;
+    const barStartAbs  = startMin + dayOffsetMin - nowMin - tlOffsetHours * 60;
+    let   barEndAbs    = (crossesMidnight ? endMin + 1440 : endMin) + dayOffsetMin - nowMin - tlOffsetHours * 60;
+
+    left  = barStartAbs / 60 * TL_COL_W;
+    width = Math.max(4, (barEndAbs - barStartAbs) / 60 * TL_COL_W);
+
+    // Only draw if visible in the 48h window
+    if (left + width < 0 || left > TL_HOURS * TL_COL_W) return null;
+
+    // Active check (only for today's slot)
+    if (dayOffset === 0) {
+      active = crossesMidnight
+        ? (nowMin >= startMin || nowMin < endMin)
+        : (nowMin >= startMin && nowMin < endMin);
+    }
+  }
+
+  const bar = document.createElement('div');
+  const colorClass = ['red','blue','green'].includes(color) ? `tl-${color}` : 'tl-unknown';
+  bar.className = `tl-bar ${colorClass}${active ? ' tl-active' : ''}${isTbc ? ' tl-tbc' : ''}`;
+  bar.style.left  = left + 'px';
+  bar.style.width = width + 'px';
+  if (!isTbc) bar.textContent = guild.tag ? `[${guild.tag}]` : guild.guild.substring(0,8);
+
+  // Tooltip
+  bar.addEventListener('mouseenter', e => {
+    const timeStr = isTbc ? 'TBC' : (parsed ? brtLabel(parsed) : '');
+    const contacts = guild.contacts?.length ? guild.contacts.join(', ') : '—';
+    tooltip.innerHTML = `
+      <div class="tl-tooltip-name">${esc(guild.guild)}</div>
+      <div class="tl-tooltip-time">${timeStr} BRT</div>
+      <div class="tl-tooltip-contacts">📡 ${contacts}</div>`;
+    tooltip.style.display = 'block';
+  });
+  bar.addEventListener('mousemove', e => {
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top  = (e.clientY - 10) + 'px';
+  });
+  bar.addEventListener('mouseleave', () => {
+    tooltip.style.display = 'none';
+  });
+
+  return bar;
+}
+
+function brtLabel(parsed) {
+  const sh = Math.floor(parsed.startMin / 60);
+  const sm = parsed.startMin % 60;
+  const eh = Math.floor(parsed.endMin / 60);
+  const em = parsed.endMin % 60;
+  return `${String(sh).padStart(2,'0')}:${String(sm).padStart(2,'0')} - ${String(eh).padStart(2,'0')}:${String(em).padStart(2,'0')}`;
+}
+
+function updateNowLine() {
+  document.querySelectorAll('.tl-now-line').forEach(el => el.remove());
+  const { m: nowM } = tlNowBRT();
+  // Minutes fraction into current hour as pixels
+  const minutesPx = (nowM / 60) * TL_COL_W;
+  document.querySelectorAll('.tl-row-track').forEach(track => {
+    const line = document.createElement('div');
+    line.className = 'tl-now-line';
+    line.style.left = (minutesPx - tlOffsetHours * TL_COL_W) + 'px';
+    track.appendChild(line);
+  });
+}
+
+function updateTlLabel() {
+  const { h, m } = tlNowBRT();
+  const label = document.getElementById('tl-now-label');
+  if (label) label.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} BRT`;
+}
+
+function tlScrollToNow() {
+  // Use a negative offset so the canvas starts a few hours BEFORE now,
+  // pushing the "now" line ~3 hours (3 * TL_COL_W px) to the right of the left edge.
+  tlOffsetHours = -3;
+  buildTimeline();
+  updateNowLine();
+  document.querySelectorAll('.tl-scroll').forEach(el => {
+    el.scrollLeft = 0;
+  });
+}
+
+function tlScroll(dir) {
+  tlOffsetHours += dir * 2; // scroll 2 hours at a time
+  buildTimeline();
+  updateNowLine();
 }
 
 // ═══════════════════════════════════════════════════════════════
