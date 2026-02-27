@@ -180,6 +180,15 @@ function resolveScheduleGuildsByName(scheduleGuilds, tierAllianceMap) {
         if (alliance.isSolo) continue;
         const hit = { matchId, color, allianceName: alliance.allianceName };
 
+        // Also index the alliance itself by its own name and tag
+        // e.g. allianceName = "[BGC] Bag Gangsta Crew" -> name key + tag key
+        const aNameOnly = norm(stripTag(alliance.allianceName));
+        if (aNameOnly && !byName.has(aNameOnly)) byName.set(aNameOnly, hit);
+        const aFull = norm(alliance.allianceName);
+        if (aFull && !byName.has(aFull)) byName.set(aFull, hit);
+        const aTag = extractTag(alliance.allianceName);
+        if (aTag && !byTag.has(aTag)) byTag.set(aTag, hit);
+
         for (const memberName of (alliance.memberGuilds || [])) {
           if (!memberName) continue;
 
@@ -191,7 +200,7 @@ function resolveScheduleGuildsByName(scheduleGuilds, tierAllianceMap) {
           const full = norm(memberName);
           if (full && !byName.has(full)) byName.set(full, hit);
 
-          // Key 3: tag (upper) — stored separately, used only as fallback
+          // Key 3: tag (upper) stored separately, used only as fallback
           const tag = extractTag(memberName);
           if (tag && !byTag.has(tag)) byTag.set(tag, hit);
         }
