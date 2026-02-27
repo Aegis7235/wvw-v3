@@ -1929,6 +1929,64 @@ h1::after {
 }
 .schedule-request-btn:active { transform: translateY(0); }
 
+/* ══════════════════════════════════════════════
+   TIMEZONE SELECTOR
+══════════════════════════════════════════════ */
+.tz-selector-bar {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .55rem 0 .9rem;
+  flex-wrap: wrap;
+}
+
+.tz-selector-label {
+  font-family: var(--font-hud);
+  font-size: .55rem;
+  letter-spacing: .15em;
+  color: var(--muted);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tz-select {
+  font-family: var(--font-hud);
+  font-size: .62rem;
+  letter-spacing: .06em;
+  color: var(--text2);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  padding: .28rem .7rem;
+  cursor: pointer;
+  outline: none;
+  transition: all .15s;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23504870'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right .55rem center;
+  padding-right: 1.6rem;
+}
+.tz-select:hover { border-color: var(--gold-dim); color: var(--gold); }
+.tz-select:focus { border-color: var(--gold-dim); color: var(--gold); box-shadow: 0 0 0 2px var(--gold-ghost); }
+.tz-select option { background: var(--panel2); color: var(--text); }
+
+.tz-current-time {
+  font-family: var(--font-hud);
+  font-size: .6rem;
+  color: var(--text2);
+  letter-spacing: .08em;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: .28rem .65rem;
+}
+
+.tz-current-time .tz-time-val {
+  color: var(--gold);
+}
+
 </style>
 </head>
 <body>
@@ -1996,13 +2054,49 @@ h1::after {
     <div class="timeline-title-wrap">
       <span class="timeline-icon">⚔</span>
       <span class="timeline-title">Guild Run Schedule</span>
-      <span class="timeline-sub">Times in BRT (UTC-3)</span>
+      <span class="timeline-sub" id="tl-tz-subtitle">Times in BRT (UTC-3)</span>
     </div>
     <div class="timeline-controls">
       <button class="tl-btn" id="tl-prev" onclick="tlScroll(-1)">◀</button>
       <span class="tl-now-label" id="tl-now-label"></span>
       <button class="tl-btn" id="tl-next" onclick="tlScroll(1)">▶</button>
       <button class="tl-btn tl-today" onclick="tlScrollToNow()">Now</button>
+    </div>
+  </div>
+  <!-- Timezone Selector -->
+  <div class="tz-selector-bar">
+    <span class="tz-selector-label">🌐 Timezone:</span>
+    <select class="tz-select" id="tz-select" onchange="onTzChange()">
+      <option value="-12">UTC-12 · Dateline</option>
+      <option value="-11">UTC-11 · Samoa</option>
+      <option value="-10">UTC-10 · Hawaii (HST)</option>
+      <option value="-9">UTC-9 · Alaska (AKST)</option>
+      <option value="-8">UTC-8 · Pacific (PST)</option>
+      <option value="-7">UTC-7 · Mountain (MST)</option>
+      <option value="-6">UTC-6 · Central (CST)</option>
+      <option value="-5">UTC-5 · Eastern (EST)</option>
+      <option value="-4">UTC-4 · Atlantic / AST</option>
+      <option value="-3" selected>UTC-3 · BRT (Brasília)</option>
+      <option value="-2">UTC-2 · Mid-Atlantic</option>
+      <option value="-1">UTC-1 · Azores</option>
+      <option value="0">UTC+0 · GMT / London</option>
+      <option value="1">UTC+1 · CET (Paris, Berlin)</option>
+      <option value="2">UTC+2 · EET (Cairo, Kyiv)</option>
+      <option value="3">UTC+3 · MSK (Moscow)</option>
+      <option value="4">UTC+4 · Gulf (Dubai)</option>
+      <option value="5">UTC+5 · PKT (Karachi)</option>
+      <option value="5.5">UTC+5:30 · IST (India)</option>
+      <option value="6">UTC+6 · BST (Dhaka)</option>
+      <option value="7">UTC+7 · ICT (Bangkok)</option>
+      <option value="8">UTC+8 · CST (Beijing, Singapore)</option>
+      <option value="9">UTC+9 · JST (Tokyo, Seoul)</option>
+      <option value="9.5">UTC+9:30 · ACST (Darwin)</option>
+      <option value="10">UTC+10 · AEST (Sydney)</option>
+      <option value="11">UTC+11 · AEDT</option>
+      <option value="12">UTC+12 · NZST (Auckland)</option>
+    </select>
+    <div class="tz-current-time">
+      Local: <span class="tz-time-val" id="tz-local-time">—</span>
     </div>
   </div>
   <div id="timeline-tiers"></div>
@@ -2052,7 +2146,39 @@ h1::after {
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="req-schedule">Schedule (BRT) <span class="form-required">*</span></label>
+        <label class="form-label" for="req-schedule">Schedule <span class="form-required">*</span></label>
+        <div style="display:flex;gap:.5rem;margin-bottom:.4rem;align-items:center;flex-wrap:wrap">
+          <span style="font-family:var(--font-hud);font-size:.55rem;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;">Timezone:</span>
+          <select class="tz-select" id="req-tz" style="font-size:.6rem;">
+            <option value="-12">UTC-12</option>
+            <option value="-11">UTC-11</option>
+            <option value="-10">UTC-10 · Hawaii</option>
+            <option value="-9">UTC-9 · Alaska</option>
+            <option value="-8">UTC-8 · Pacific</option>
+            <option value="-7">UTC-7 · Mountain</option>
+            <option value="-6">UTC-6 · Central</option>
+            <option value="-5">UTC-5 · Eastern</option>
+            <option value="-4">UTC-4 · Atlantic</option>
+            <option value="-3" selected>UTC-3 · BRT (Brasília)</option>
+            <option value="-2">UTC-2</option>
+            <option value="-1">UTC-1 · Azores</option>
+            <option value="0">UTC+0 · GMT</option>
+            <option value="1">UTC+1 · CET</option>
+            <option value="2">UTC+2 · EET</option>
+            <option value="3">UTC+3 · MSK</option>
+            <option value="4">UTC+4 · Gulf</option>
+            <option value="5">UTC+5</option>
+            <option value="5.5">UTC+5:30 · IST</option>
+            <option value="6">UTC+6</option>
+            <option value="7">UTC+7 · ICT</option>
+            <option value="8">UTC+8 · CST</option>
+            <option value="9">UTC+9 · JST</option>
+            <option value="9.5">UTC+9:30 · ACST</option>
+            <option value="10">UTC+10 · AEST</option>
+            <option value="11">UTC+11</option>
+            <option value="12">UTC+12 · NZST</option>
+          </select>
+        </div>
         <textarea class="form-input form-textarea" id="req-schedule" placeholder="e.g.&#10;Mon: 20:00 - 22:00&#10;Wed: 20:00 - 22:00&#10;Fri: 21:00 - 23:00"></textarea>
       </div>
 
@@ -2438,9 +2564,12 @@ let tlOffsetHours = 0; // scroll offset in hours from "now"
 let tlMatches     = [];
 let tlSchedule    = {};
 
+// ── Timezone offset (in hours). Default: -3 (BRT)
+let tlTzOffset = -3;
+
 function tlNowBRT() {
-  // BRT = UTC-3
-  const d = new Date(Date.now() - 3 * 3600000);
+  // Use selected timezone offset
+  const d = new Date(Date.now() + tlTzOffset * 3600000);
   return { h: d.getUTCHours(), m: d.getUTCMinutes(), day: d.getUTCDay() };
 }
 
@@ -2451,11 +2580,16 @@ function tlTimeToMinutes(str) {
 }
 
 function tlParseSlot(utcStr) {
-  // Parse "HH:MM - HH:MM" — schedule sheet is already in BRT, no conversion needed
+  // Parse "HH:MM - HH:MM" — schedule is stored in BRT (UTC-3)
+  // Convert to the currently selected timezone
   const m = utcStr.match(/^(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})$/);
   if (!m) return null;
-  const startMin = (+m[1]) * 60 + (+m[2]);
-  const endMin   = (+m[3]) * 60 + (+m[4]);
+  const brtStart = (+m[1]) * 60 + (+m[2]);
+  const brtEnd   = (+m[3]) * 60 + (+m[4]);
+  // BRT = UTC-3. Convert BRT→UTC→selectedTz
+  const tzDiffFromBRT = tlTzOffset - (-3); // e.g. UTC-5 → diff = -2
+  const startMin = ((brtStart + tzDiffFromBRT * 60) % 1440 + 1440) % 1440;
+  const endMin   = ((brtEnd   + tzDiffFromBRT * 60) % 1440 + 1440) % 1440;
   return { startMin, endMin };
 }
 
@@ -2496,6 +2630,7 @@ function renderTimeline(matches, scheduleByMatch) {
   const section = document.getElementById('timeline-section');
   section.style.display = 'block';
 
+  autoDetectTimezone();
   buildTimeline();
   updateNowLine();
   tlScrollToNow();
@@ -2777,11 +2912,13 @@ function buildBar(guild, parsed, color, isTbc, dayOffset, tooltip) {
 
   // Tooltip
   bar.addEventListener('mouseenter', e => {
+    const sign = tlTzOffset >= 0 ? '+' : '';
+    const tzStr = `UTC${sign}${tlTzOffset}`;
     const timeStr = isTbc ? 'TBC' : (parsed ? brtLabel(parsed) : '');
     const contacts = guild.contacts?.length ? guild.contacts.join(', ') : '—';
     tooltip.innerHTML = `
       <div class="tl-tooltip-name">${esc(guild.guild)}</div>
-      <div class="tl-tooltip-time">${timeStr} BRT</div>
+      <div class="tl-tooltip-time">${timeStr} ${tzStr}</div>
       <div class="tl-tooltip-contacts">📡 ${contacts}</div>`;
     tooltip.style.display = 'block';
   });
@@ -2820,7 +2957,61 @@ function updateNowLine() {
 function updateTlLabel() {
   const { h, m } = tlNowBRT();
   const label = document.getElementById('tl-now-label');
-  if (label) label.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} BRT`;
+  const sign = tlTzOffset >= 0 ? '+' : '';
+  const tzStr = Number.isInteger(tlTzOffset) ? `${sign}${tlTzOffset}` : `${sign}${tlTzOffset}`;
+  if (label) label.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} (UTC${tzStr})`;
+}
+
+function onTzChange() {
+  const sel = document.getElementById('tz-select');
+  tlTzOffset = parseFloat(sel.value);
+  // Update subtitle
+  const sub = document.getElementById('tl-tz-subtitle');
+  if (sub) {
+    const sign = tlTzOffset >= 0 ? '+' : '';
+    const opt = sel.options[sel.selectedIndex];
+    const label = opt.text.split('·')[1]?.trim() || `UTC${sign}${tlTzOffset}`;
+    sub.textContent = `Times in ${label} (UTC${sign}${tlTzOffset})`;
+  }
+  buildTimeline();
+  updateNowLine();
+  updateTlLabel();
+  updateTzLocalTime();
+  tlScrollToNow();
+}
+
+function updateTzLocalTime() {
+  const { h, m } = tlNowBRT();
+  const el = document.getElementById('tz-local-time');
+  if (el) el.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+
+// Auto-detect user's local timezone on load and set it
+function autoDetectTimezone() {
+  const localOffset = -(new Date().getTimezoneOffset()) / 60; // in hours
+  const sel = document.getElementById('tz-select');
+  if (!sel) return;
+  // Find closest option
+  let bestOpt = null, bestDiff = Infinity;
+  Array.from(sel.options).forEach(opt => {
+    const d = Math.abs(parseFloat(opt.value) - localOffset);
+    if (d < bestDiff) { bestDiff = d; bestOpt = opt; }
+  });
+  if (bestOpt && bestDiff <= 0.5) {
+    sel.value = bestOpt.value;
+    tlTzOffset = parseFloat(bestOpt.value);
+  }
+  // Update subtitle
+  const sub = document.getElementById('tl-tz-subtitle');
+  if (sub && sel.options[sel.selectedIndex]) {
+    const sign = tlTzOffset >= 0 ? '+' : '';
+    const opt = sel.options[sel.selectedIndex];
+    const label = opt.text.split('·')[1]?.trim() || `UTC${sign}${tlTzOffset}`;
+    sub.textContent = `Times in ${label} (UTC${sign}${tlTzOffset})`;
+  }
+  updateTzLocalTime();
+  // Keep local time updating
+  setInterval(updateTzLocalTime, 30000);
 }
 
 function tlScrollToNow() {
@@ -2977,8 +3168,11 @@ function mergeOverlaps(rawOverlaps, colorA, colorB) {
 }
 
 function minToHHMM(min) {
-  const h = Math.floor((min % 1440) / 60);
-  const m = min % 60;
+  // Convert from BRT absolute minutes to selected timezone
+  const tzDiffFromBRT = tlTzOffset - (-3);
+  const adjusted = ((min + tzDiffFromBRT * 60) % 1440 + 1440) % 1440;
+  const h = Math.floor(adjusted / 60);
+  const m = adjusted % 60;
   return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
 }
 
@@ -3133,6 +3327,10 @@ function openRequestModal() {
   document.getElementById('req-notes').value    = '';
   document.querySelector('input[name="req-type"][value="add"]').checked = true;
   document.getElementById('req-submit').disabled = false;
+  // Sync timezone with the timeline selector
+  const tlSel   = document.getElementById('tz-select');
+  const reqTzSel = document.getElementById('req-tz');
+  if (tlSel && reqTzSel) reqTzSel.value = tlSel.value;
 }
 
 function closeRequestModal(e) {
@@ -3151,6 +3349,9 @@ async function submitRequest() {
   const schedule = document.getElementById('req-schedule').value.trim();
   const notes    = document.getElementById('req-notes').value.trim();
   const type     = document.querySelector('input[name="req-type"]:checked').value;
+  const tzSel    = document.getElementById('req-tz');
+  const tzOffset = parseFloat(tzSel.value);
+  const tzLabel  = tzSel.options[tzSel.selectedIndex].text;
   const feedback = document.getElementById('req-feedback');
 
   if (!guild) {
@@ -3177,7 +3378,8 @@ async function submitRequest() {
     fields: [
       { name: '🏰 Guild', value: `${guild}${tagDisplay}`, inline: true },
       { name: '📋 Type',  value: type === 'add' ? 'Add new schedule' : 'Correct existing', inline: true },
-      { name: '🕐 Schedule (BRT)', value: '```' + schedule + '```', inline: false },
+      { name: '🌐 Timezone', value: tzLabel, inline: true },
+      { name: '🕐 Schedule', value: '```' + schedule + '```', inline: false },
     ],
     footer: { text: 'WvW Monitor · Schedule Request' },
     timestamp: new Date().toISOString(),
