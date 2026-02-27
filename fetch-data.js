@@ -1,4 +1,4 @@
-// fetch-data.js — runs every 10 min via GitHub Actions
+// fetch-data.js — runs every 15 min via GitHub Actions
 import fetch from 'node-fetch';
 import Papa from 'papaparse';
 
@@ -8,11 +8,6 @@ const BIN_ID       = process.env.JSONBIN_BIN_ID;
 const BIN_HIST_ID  = process.env.JSONBIN_HIST_ID;
 const BIN_URL      = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 const BIN_HIST_URL = `https://api.jsonbin.io/v3/b/${BIN_HIST_ID}`;
-
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const GITHUB_REPO  = process.env.GITHUB_REPOSITORY; // e.g. "user/repo"
-const CACHE_FILE   = 'guild_id_cache.json';
-const CACHE_URL    = `https://raw.githubusercontent.com/${process.env.GITHUB_REPOSITORY}/main/${CACHE_FILE}`;
 
 const MAX_SNAPSHOTS  = 12;
 const SHEET_URL      = 'https://docs.google.com/spreadsheets/d/1Txjpcet-9FDVek6uJ0N3OciwgbpE0cfWozUK7ATfWx4/export?format=csv&gid=1120510750';
@@ -65,7 +60,6 @@ function parseSheet(csvText) {
   }
   return alliances;
 }
-
 
 // Parses the Solo Guilds sheet (gid=768688698)
 // Returns an array of { guildName, guildId, worldName } — one entry per guild.
@@ -138,51 +132,45 @@ function parseRunSchedule(csvText) {
       // x or empty = no run that day
     }
 
-    guilds.push({ guild: name, tag, schedule, contacts: [], guildId: null });
+    guilds.push({ guild: name, tag, schedule, contacts: [] });
   }
 
   return guilds;
 }
 
-// ── GitHub cache helpers ──────────────────────────────────────
-async function loadGuildIdCache() {
-  try {
-    const r = await fetch(CACHE_URL + '?t=' + Date.now());
-    if (!r.ok) return {};
-    return await r.json();
-  } catch { return {}; }
-}
+// Normalise a string for fuzzy comparison: lowercase, strip non-alphanumeric
+const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-async function saveGuildIdCache(cache) {
-  try {
-    // Get current file SHA (required by GitHub API to update a file)
-    const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/${CACHE_FILE}`;
-    const meta = await fetch(apiUrl, {
-      headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, 'User-Agent': 'wvw-monitor' }
-    }).then(r => r.ok ? r.json() : null);
+/**
+ * Given the fully-built tierAllianceMap and the list of schedule guilds,
+ * resolve each guild's matchId + color by looking up its name inside
+ * the memberGuilds arrays of every alliance already on the page.
+ *
+ * Returns: { matchId, color, allianceName } | null per guild.
+ */
+function resolveScheduleGuildsByName(scheduleGuilds, tierAllianceMap) {
+  // Build a flat lookup: normalisedGuildName → { matchId, color, allianceName }
+  const lookup = new Map();
 
-    const sha     = meta?.sha;
-    const content = Buffer.from(JSON.stringify(cache, null, 2)).toString('base64');
-
-    const r = await fetch(apiUrl, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${GITHUB_TOKEN}`,
-        'Content-Type': 'application/json',
-        'User-Agent': 'wvw-monitor'
-      },
-      body: JSON.stringify({
-        message: 'chore: update guild_id_cache.json',
-        content,
-        ...(sha ? { sha } : {})
-      })
-    });
-
-    if (r.ok) console.log('guild_id_cache.json saved to GitHub');
-    else { const t = await r.text(); console.error('GitHub cache save failed:', t); }
-  } catch(e) {
-    console.error('GitHub cache save error:', e.message);
+  for (const [matchId, colorMap] of Object.entries(tierAllianceMap)) {
+    for (const [color, alliances] of Object.entries(colorMap)) {
+      for (const alliance of alliances) {
+        if (alliance.isSolo) continue; // skip solo-guilds blocks
+        for (const memberName of (alliance.memberGuilds || [])) {
+          const key = norm(memberName);
+          if (key) {
+            lookup.set(key, { matchId, color, allianceName: alliance.allianceName });
+          }
+        }
+      }
+    }
   }
+
+  return scheduleGuilds.map(g => {
+    const hit = lookup.get(norm(g.guild));
+    return hit ? { ...g, matchId: hit.matchId, color: hit.color, allianceName: hit.allianceName }
+               : { ...g, matchId: null, color: null, allianceName: null };
+  });
 }
 
 async function binGet(url) {
@@ -252,7 +240,6 @@ async function binPut(url, data, retries = 3) {
 
   // 4. Parse alliances
   const allianceData = parseSheet(csvText);
-  const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   const tierAllianceMap = {};
   naIds.forEach(id => { tierAllianceMap[id] = { red:[], blue:[], green:[] }; });
 
@@ -275,21 +262,17 @@ async function binPut(url, data, retries = 3) {
   const soloGuilds = parseSoloGuilds(soloCsvText);
   console.log(`Solo guilds parsed: ${soloGuilds.length}`);
 
-  // Group solo guilds by world → build one "[Solo Guilds]" alliance entry per team/color
-  // Key: matchId|color → array of guild names
+  const norm2 = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   const soloByTeam = {};
   naIds.forEach(id => { soloByTeam[id] = { red:[], blue:[], green:[] }; });
 
-  const norm2 = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   soloGuilds.forEach(g => {
-    // Try to resolve via naWvWGuilds API first
     let team = null;
     const apiWorld = naWvWGuilds?.[g.guildId.toUpperCase()]
                   || naWvWGuilds?.[g.guildId.toLowerCase()]
                   || naWvWGuilds?.[g.guildId];
     if (apiWorld) team = worldIdToTeam[String(apiWorld)];
 
-    // Fall back to worldName column
     if (!team && g.worldName) {
       const normTarget = norm2(g.worldName);
       const matchedWid = Object.keys(worldNames).find(wid => norm2(worldNames[wid]) === normTarget);
@@ -332,75 +315,46 @@ async function binPut(url, data, retries = 3) {
     }
   }
 
-  // 4c. Parse run schedule + resolve guild IDs (cached weekly)
-  const scheduleGuilds = parseRunSchedule(scheduleCsvText);
-  console.log(`Schedule guilds parsed: ${scheduleGuilds.length}`);
+  // 4c. Parse run schedule and resolve teams by guild name lookup in the page data
+  const scheduleGuildsRaw = parseRunSchedule(scheduleCsvText);
+  console.log(`Schedule guilds parsed: ${scheduleGuildsRaw.length}`);
 
-  // Decide whether to re-resolve guild IDs (Fridays 17-19 UTC or no cache yet)
-  const nowDate       = new Date(now);
-  const isFriday      = nowDate.getUTCDay() === 5;
-  const isUpdateHour  = nowDate.getUTCHours() >= 17 && nowDate.getUTCHours() < 19;
-  const shouldResolve = isFriday && isUpdateHour;
+  // Resolve each schedule guild's team by finding its name inside tierAllianceMap.memberGuilds.
+  // No API calls needed — the page already knows which alliance (and therefore which team/color)
+  // each guild belongs to. Guilds not found in any alliance go to "unknown".
+  const scheduleGuilds = resolveScheduleGuildsByName(scheduleGuildsRaw, tierAllianceMap);
 
-  // Load cached guild ID map from history record
-  let guildIdCache = await loadGuildIdCache();
-  console.log(`Guild ID cache loaded: ${Object.keys(guildIdCache).length} entries`);
-
-  if (shouldResolve || Object.keys(guildIdCache).length === 0) {
-    console.log('Resolving guild IDs from GW2 API...');
-    for (const g of scheduleGuilds) {
-      const key = g.guild.toLowerCase();
-      if (guildIdCache[key]) continue; // already cached
-      try {
-        const ids = await fetch(`${GW2}/guild/search?name=${encodeURIComponent(g.guild)}`)
-          .then(r => r.ok ? r.json() : []);
-        if (ids && ids.length > 0) {
-          guildIdCache[key] = ids[0]; // take first match
-          console.log(`  Resolved: ${g.guild} → ${ids[0]}`);
-        } else {
-          console.log(`  Not found: ${g.guild}`);
-        }
-      } catch(e) {
-        console.error(`  Error resolving ${g.guild}: ${e.message}`);
-      }
-    }
-    // Save updated cache back into history
-    await saveGuildIdCache(guildIdCache);
-    console.log(`Guild ID cache updated: ${Object.keys(guildIdCache).length} entries`);
-  } else {
-    console.log(`Using cached guild IDs (${Object.keys(guildIdCache).length} entries), next refresh: Friday 17-19 UTC`);
+  const resolved   = scheduleGuilds.filter(g => g.matchId);
+  const unresolved = scheduleGuilds.filter(g => !g.matchId);
+  console.log(`Schedule guilds resolved: ${resolved.length} / unknown: ${unresolved.length}`);
+  if (unresolved.length) {
+    console.log('Unresolved guilds:', unresolved.map(g => g.guild).join(', '));
   }
 
-  // Attach resolved IDs and determine which team/color each guild belongs to
-  scheduleGuilds.forEach(g => {
-    const key = g.guild.toLowerCase();
-    g.guildId = guildIdCache[key] || null;
-
-    let team = null;
-    if (g.guildId) {
-      const worldId = naWvWGuilds?.[g.guildId.toUpperCase()]
-                   || naWvWGuilds?.[g.guildId.toLowerCase()]
-                   || naWvWGuilds?.[g.guildId];
-      if (worldId) team = worldIdToTeam[String(worldId)];
-    }
-    g.matchId = team?.matchId || null;
-    g.color   = team?.color   || null;
-  });
-
   // Build scheduleByMatch: { matchId: { red: [...], blue: [...], green: [...] } }
+  // plus a special "unknown" bucket for guilds not found on the page.
   const scheduleByMatch = {};
   naIds.forEach(id => { scheduleByMatch[id] = { red:[], blue:[], green:[] }; });
+  scheduleByMatch['unknown'] = { unknown: [] }; // single bucket for all unresolved guilds
+
   scheduleGuilds.forEach(g => {
+    const entry = {
+      guild:    g.guild,
+      tag:      g.tag,
+      schedule: g.schedule,
+      contacts: g.contacts,
+    };
     if (g.matchId && g.color && scheduleByMatch[g.matchId]) {
-      scheduleByMatch[g.matchId][g.color].push({
-        guild:    g.guild,
-        tag:      g.tag,
-        guildId:  g.guildId,
-        schedule: g.schedule,
-        contacts: g.contacts,
-      });
+      scheduleByMatch[g.matchId][g.color].push(entry);
+    } else {
+      scheduleByMatch['unknown'].unknown.push(entry);
     }
   });
+
+  // Remove the unknown bucket if it's empty (keep payload clean)
+  if (!scheduleByMatch['unknown'].unknown.length) {
+    delete scheduleByMatch['unknown'];
+  }
 
   // 5. Current kills/deaths
   const nowKills  = {};
@@ -411,8 +365,6 @@ async function binPut(url, data, retries = 3) {
   });
 
   // 6. K/D delta against oldest snapshot (~2h)
-  // Use oldSnap as long as it exists (even if < 10min), so the UI always shows something.
-  // The UI already labels the window with actual minutes, so stale data is visible to the user.
   const kdDelta = {};
   if (oldSnap) {
     matches.forEach(m => {
@@ -425,8 +377,7 @@ async function binPut(url, data, retries = 3) {
     });
   }
 
-  // 7. Build KD chart series — delta between each consecutive snapshot pair
-  // Each point = { t: minutesAgo, kd: { red, blue, green } }
+  // 7. Build KD chart series
   const kdSeries = {};
   naIds.forEach(id => { kdSeries[id] = []; });
 
@@ -466,7 +417,7 @@ async function binPut(url, data, retries = 3) {
       }
       if (!name) {
         const wids = m.worlds[color] ? [m.worlds[color]] : (m.all_worlds[color] || []);
-        name = worldNames[String(wids[0])] || '\u2014';
+        name = worldNames[String(wids[0])] || '—';
       }
       primaryWorlds[m.id][color] = name;
     });
