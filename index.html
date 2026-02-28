@@ -1064,100 +1064,53 @@ h1::after {
 }
 
 /* ══════════════════════════════════════════════
-   KD CHART
-══════════════════════════════════════════════ */
-.kd-chart-wrap {
-  padding: .6rem 1.1rem .7rem 1.1rem;
-  background: rgba(0,0,0,0.25);
-  border-top: 1px solid var(--line);
-}
-
-.kd-chart-title {
-  font-family: var(--font-hud);
-  font-size: .55rem;
-  letter-spacing: .2em;
-  color: var(--text2);
-  text-transform: uppercase;
-  margin-bottom: .5rem;
-  font-weight: 600;
-}
-
-.kd-chart {
-  width: 100%;
-  height: 80px;
-  display: block;
-  overflow: visible;
-}
-
-.kd-chart-baseline {
-  stroke: rgba(255,255,255,0.15);
-  stroke-width: 1;
-  stroke-dasharray: 3 3;
-}
-
-/* ── CHART TOOLTIP ── */
-.kd-chart-wrap {
-  position: relative;
-}
-
-.kd-tooltip {
-  position: absolute;
-  top: 4px;
-  right: 6px;
-  background: rgba(8,6,17,0.92);
-  border: 1px solid var(--line2);
-  border-radius: var(--radius-sm);
-  padding: .25rem .55rem;
-  font-family: var(--font-hud);
-  font-size: .6rem;
-  letter-spacing: .05em;
-  pointer-events: none;
-  z-index: 20;
-  backdrop-filter: blur(4px);
-  min-width: 80px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-}
-
-.kd-tooltip-row {
-  display: flex;
-  align-items: center;
-  gap: .35rem;
-  line-height: 1.6;
-}
-
-.kd-tooltip-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.kd-tooltip-label {
-  color: var(--text2);
-  flex: 1;
-}
-
-.kd-tooltip-val {
-  font-weight: 600;
-}
-
-.kd-tooltip-time {
-  color: var(--muted);
-  font-size: .52rem;
-  letter-spacing: .08em;
-  margin-bottom: .15rem;
-  text-align: right;
-}
-
-/* ══════════════════════════════════════════════
    K/D STRIP
 ══════════════════════════════════════════════ */
 .kd-strip {
   display: flex;
-  align-items: center;
-  gap: .6rem;
-  padding: .35rem 1.1rem .35rem 1.3rem;
+  flex-direction: column;
+  padding: 0;
   background: rgba(0,0,0,0.18);
   border-top: 1px solid var(--line);
+}
+
+.kd-section {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .42rem 1.1rem .42rem 1.3rem;
+  flex-wrap: wrap;
+}
+
+.kd-section + .kd-section {
+  border-top: 1px solid var(--line2);
+}
+
+.kd-section-label {
+  font-family: var(--font-hud);
+  font-size: .46rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  font-weight: 700;
+  min-width: 50px;
+  flex-shrink: 0;
+  padding: .15rem .45rem;
+  border-radius: 2px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.05);
+  color: #b0a8cc;
+}
+
+.kd-section-recent .kd-section-label {
+  color: #d4c86a;
+  border-color: rgba(212,200,106,0.35);
+  background: rgba(212,200,106,0.08);
+}
+
+.kd-section-weekly .kd-section-label {
+  color: #80c8ff;
+  border-color: rgba(96,192,255,0.3);
+  background: rgba(96,192,255,0.07);
 }
 
 .kd-label {
@@ -1177,6 +1130,11 @@ h1::after {
   letter-spacing: .06em;
   line-height: 1;
 }
+
+/* legacy */
+.kd-col { display: flex; flex-direction: column; gap: .15rem; }
+.kd-row { display: flex; align-items: center; gap: .5rem; }
+.kd-window-label { font-family: var(--font-hud); font-size: .52rem; color: var(--text2); }
 
 .kd-good { color: #50e090; text-shadow: 0 0 10px rgba(80,224,144,0.4); }
 .kd-mid  { color: #f0c86a; text-shadow: 0 0 10px rgba(240,200,106,0.4); }
@@ -1270,15 +1228,6 @@ h1::after {
   background: var(--line2);
   flex-shrink: 0;
   margin: 0 .2rem;
-}
-
-.kd-window {
-  font-family: var(--font-hud);
-  font-size: .38rem;
-  letter-spacing: .1em;
-  color: var(--muted);
-  margin-left: auto;
-  opacity: 0.65;
 }
 
 /* ══════════════════════════════════════════════
@@ -2233,6 +2182,29 @@ h1::after {
   </div>
 </div>
 
+<!-- ═══ CONFRONTOS SEARCH BAR ═══ (moved above timelines) -->
+<div id="conf-search-section" style="display:none">
+  <div class="conf-search-bar">
+    <div class="conf-search-label">
+      <span class="conf-search-label-icon">🗡</span>
+      <div>
+        <div class="conf-search-label-text">Predicted Confrontations</div>
+        <div class="conf-search-label-sub">Search your guild to see potential clashes</div>
+      </div>
+    </div>
+    <div class="conf-search-sep"></div>
+    <div class="conf-search-wrap">
+      <span class="conf-search-icon">🔍</span>
+      <input class="conf-search-input" id="conf-search-input" type="text"
+             placeholder="Type guild name or tag…" autocomplete="off"
+             oninput="confSearchInput(this.value)"
+             onkeydown="confSearchKey(event)">
+      <button class="conf-search-clear" id="conf-search-clear" onclick="confClearSearch()" title="Clear">✕</button>
+      <div class="conf-autocomplete" id="conf-autocomplete"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ TIMELINE ═══ -->
 <div id="timeline-section" style="display:none">
   <div class="timeline-header">
@@ -2285,29 +2257,6 @@ h1::after {
     </div>
   </div>
   <div id="timeline-tiers"></div>
-</div>
-
-<!-- ═══ CONFRONTOS SEARCH BAR ═══ -->
-<div id="conf-search-section" style="display:none">
-  <div class="conf-search-bar">
-    <div class="conf-search-label">
-      <span class="conf-search-label-icon">🗡</span>
-      <div>
-        <div class="conf-search-label-text">Predicted Confrontations</div>
-        <div class="conf-search-label-sub">Search your guild to see potential clashes</div>
-      </div>
-    </div>
-    <div class="conf-search-sep"></div>
-    <div class="conf-search-wrap">
-      <span class="conf-search-icon">🔍</span>
-      <input class="conf-search-input" id="conf-search-input" type="text"
-             placeholder="Type guild name or tag…" autocomplete="off"
-             oninput="confSearchInput(this.value)"
-             onkeydown="confSearchKey(event)">
-      <button class="conf-search-clear" id="conf-search-clear" onclick="confClearSearch()" title="Clear">✕</button>
-      <div class="conf-autocomplete" id="conf-autocomplete"></div>
-    </div>
-  </div>
 </div>
 
 <!-- ═══ CONFRONTOS MODAL ═══ -->
@@ -2465,11 +2414,10 @@ async function init() {
       m._kdDelta      = (kdDelta      || {})[m.id] || null;
       m._primaryWorld = (primaryWorlds || {})[m.id] || {};
       m._kdSeries     = (kdSeries     || {})[m.id] || [];
+      // kills/deaths are already on match object from GW2 API
     });
 
     renderGrid(matches, tierAllianceMap);
-    // Init interactive chart tooltips after DOM is updated
-    requestAnimationFrame(() => initChartTooltips());
 
     // Render timeline if schedule data exists
     if (scheduleByMatch && Object.keys(scheduleByMatch).length) {
@@ -2546,7 +2494,6 @@ function buildCard(match, tierNum, alliancesPerColor, bestMatchId, bestColor) {
       <div class="seg blue"  style="width:${pct(sc.blue,tot)}%"></div>
       <div class="seg green" style="width:${pct(sc.green,tot)}%"></div>
     </div>
-    ${buildKdChart(match._kdSeries, match.id)}
     ${['red','blue','green'].map(color => {
       const alliances = (alliancesPerColor || {})[color] || [];
       const sorted = [...alliances].sort((a,b) => {
@@ -2592,7 +2539,7 @@ function buildCard(match, tierNum, alliancesPerColor, bestMatchId, bestColor) {
       if (!kdDelta) {
         kdStr    = '—';
         kdClass  = 'kd-wait';
-        kdWindow = 'collecting baseline…';
+        kdWindow = 'collecting…';
       } else {
         const { kills, deaths, minutes } = kdDelta;
         const kd = deaths > 0 ? (kills / deaths) : kills > 0 ? Infinity : 0;
@@ -2601,7 +2548,24 @@ function buildCard(match, tierNum, alliancesPerColor, bestMatchId, bestColor) {
                  : kd >= 1.5 ? 'kd-good' : kd >= 0.8 ? 'kd-mid' : 'kd-bad';
         const h  = Math.floor(minutes / 60);
         const mn = minutes % 60;
-        kdWindow = h > 0 ? `last ${h}h${mn > 0 ? mn + 'm' : ''}` : `last ${mn}m`;
+        kdWindow = h > 0 ? `${h}h${mn > 0 ? mn + 'm' : ''}` : `${mn}m`;
+      }
+
+      // ── Total kills/deaths from match scores (weekly, resets with match)
+      const totKills  = match.kills  ? (match.kills[color]  ?? null) : null;
+      const totDeaths = match.deaths ? (match.deaths[color] ?? null) : null;
+
+      // Pre-compute weekly KD
+      let wKdStr = '—', wKdClass = 'kd-wait';
+      if (totKills !== null && totDeaths !== null) {
+        if (totDeaths === 0) {
+          wKdStr = totKills > 0 ? '∞' : '—';
+          wKdClass = totKills > 0 ? 'kd-good' : 'kd-wait';
+        } else {
+          const wkd = totKills / totDeaths;
+          wKdStr = wkd.toFixed(2);
+          wKdClass = wkd >= 1.5 ? 'kd-good' : wkd >= 0.8 ? 'kd-mid' : 'kd-bad';
+        }
       }
 
       const isBest = match.id === bestMatchId && color === bestColor;
@@ -2618,13 +2582,30 @@ function buildCard(match, tierNum, alliancesPerColor, bestMatchId, bestColor) {
             </div>
           </div>
           <div class="kd-strip${isBest ? ' kd-best' : ''}">
-            ${isBest ? '<span class="kd-crown" title="Best K/D on the server">♛</span>' : ''}
-            <span class="kd-label">K/D</span>
-            <span class="kd-value ${kdClass}">${kdStr}</span>
-            <div class="kd-sep"></div>
-            <span class="kd-label">Kills</span>
-            <span class="kd-value kd-kills-val">${kdDelta ? fmt(kdDelta.kills) : '—'}</span>
-            <span class="kd-window">${kdWindow}</span>
+            <div class="kd-section kd-section-recent">
+              ${isBest ? '<span class="kd-crown" title="Best K/D on the server">♛</span>' : ''}
+              <span class="kd-section-label">Last ${kdWindow}</span>
+              <span class="kd-label">K/D</span>
+              <span class="kd-value ${kdClass}">${kdStr}</span>
+              <div class="kd-sep"></div>
+              <span class="kd-label">Kills</span>
+              <span class="kd-value kd-kills-val">${kdDelta ? fmt(kdDelta.kills) : '—'}</span>
+              <div class="kd-sep"></div>
+              <span class="kd-label">Deaths</span>
+              <span class="kd-value kd-bad">${kdDelta ? fmt(kdDelta.deaths) : '—'}</span>
+            </div>
+            ${totKills !== null ? `
+            <div class="kd-section kd-section-weekly">
+              <span class="kd-section-label">Weekly</span>
+              <span class="kd-label">K/D</span>
+              <span class="kd-value ${wKdClass}">${wKdStr}</span>
+              <div class="kd-sep"></div>
+              <span class="kd-label">Kills</span>
+              <span class="kd-value kd-kills-val">${fmt(totKills)}</span>
+              <div class="kd-sep"></div>
+              <span class="kd-label">Deaths</span>
+              <span class="kd-value kd-bad">${fmt(totDeaths)}</span>
+            </div>` : ''}
           </div>
           ${blocksHtml}
         </div>
@@ -2661,107 +2642,6 @@ function startCountdown(endDate) {
   }
   tick();
   _countdownInterval = setInterval(tick, 1000);
-}
-
-// ═══════════════════════════════════════════════════════════════
-// KD CHART — SVG line chart with hover tooltip
-// ═══════════════════════════════════════════════════════════════
-function buildKdChart(series, matchId) {
-  if (!series || series.length < 2) {
-    return `<div class="kd-chart-wrap">
-      <div class="kd-chart-title">K/D · last 2h</div>
-      <div style="text-align:center;padding:.5rem 0;font-family:var(--font-body);font-style:italic;font-size:.8rem;color:var(--muted)">Collecting data…</div>
-    </div>`;
-  }
-
-  const W = 300, H = 80, PAD = { t:8, r:8, b:18, l:28 };
-  const cW = W - PAD.l - PAD.r;
-  const cH = H - PAD.t - PAD.b;
-
-  // Collect all valid KD values to set Y scale
-  const allVals = [];
-  series.forEach(pt => {
-    ['red','blue','green'].forEach(c => {
-      if (pt[matchId]?.[c] !== null && pt[matchId]?.[c] !== undefined) allVals.push(pt[matchId][c]);
-    });
-  });
-  if (!allVals.length) return '';
-
-  const minV = Math.max(0, Math.min(...allVals) - 0.2);
-  const maxV = Math.max(...allVals) + 0.2;
-  const range = maxV - minV || 1;
-
-  // X: oldest point (largest t) on left, t=0 (now) on right
-  const maxT  = Math.max(...series.map(p => p.t));
-
-  const toX = t  => PAD.l + ((maxT - t) / (maxT || 1)) * cW;
-  const toY = v  => PAD.t + (1 - (v - minV) / range) * cH;
-
-  const colors = { red: '#ff7060', blue: '#60c0ff', green: '#50e090' };
-
-  let paths = '';
-  let dots  = '';
-  ['red','blue','green'].forEach(color => {
-    const pts = series
-      .map(pt => ({ t: pt.t, v: pt[matchId]?.[color] }))
-      .filter(p => p.v !== null && p.v !== undefined);
-    if (pts.length < 2) return;
-
-    const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${toX(p.t).toFixed(1)},${toY(p.v).toFixed(1)}`).join(' ');
-    paths += `<path d="${d}" fill="none" stroke="${colors[color]}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.85" class="kd-line kd-line-${color}"/>`;
-
-    // Last dot
-    const last = pts[pts.length - 1];
-    dots += `<circle cx="${toX(last.t).toFixed(1)}" cy="${toY(last.v).toFixed(1)}" r="2.5" fill="${colors[color]}"/>`;
-  });
-
-  // Y axis labels
-  const yLabels = [minV, (minV + maxV) / 2, maxV].map(v => {
-    const y = toY(v);
-    return `<text x="${PAD.l - 4}" y="${y.toFixed(1)}" text-anchor="end" dominant-baseline="middle" fill="#9890b8" font-size="7" font-family="monospace">${v.toFixed(1)}</text>`;
-  }).join('');
-
-  // X axis labels (time)
-  const xLabels = series
-    .filter((_, i) => i === 0 || i === Math.floor(series.length / 2) || i === series.length - 1)
-    .map(pt => {
-      const x = toX(pt.t);
-      const label = pt.t === 0 ? 'now' : `-${pt.t}m`;
-      return `<text x="${x.toFixed(1)}" y="${(H - 4).toFixed(1)}" text-anchor="middle" fill="#9890b8" font-size="7" font-family="monospace">${label}</text>`;
-    }).join('');
-
-  // Baseline at KD=1
-  const baseY = toY(1).toFixed(1);
-  const baseline = minV < 1 && maxV > 1
-    ? `<line x1="${PAD.l}" y1="${baseY}" x2="${PAD.l + cW}" y2="${baseY}" class="kd-chart-baseline"/>`
-    : '';
-
-  // Hover crosshair + tooltip elements (hidden initially)
-  const crosshair = `<line class="kd-crosshair" x1="0" y1="${PAD.t}" x2="0" y2="${PAD.t + cH}" stroke="rgba(255,255,255,0.2)" stroke-width="1" stroke-dasharray="2 2" style="display:none" pointer-events="none"/>`;
-
-  // Encode series data for JS
-  const seriesData = JSON.stringify(series.map(pt => ({
-    t: pt.t,
-    r: pt[matchId]?.red   ?? null,
-    b: pt[matchId]?.blue  ?? null,
-    g: pt[matchId]?.green ?? null,
-  })));
-
-  return `<div class="kd-chart-wrap">
-    <div class="kd-chart-title">K/D · last 2h</div>
-    <div class="kd-tooltip" style="display:none"></div>
-    <svg class="kd-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"
-         data-series="${esc(seriesData)}"
-         data-pad-l="${PAD.l}" data-pad-t="${PAD.t}" data-cw="${cW}" data-ch="${cH}"
-         data-maxt="${maxT}" data-minv="${minV.toFixed(4)}" data-range="${range.toFixed(4)}">
-      ${baseline}
-      ${paths}
-      ${dots}
-      ${yLabels}
-      ${xLabels}
-      ${crosshair}
-    </svg>
-  </div>`;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3251,83 +3131,6 @@ function tlScroll(dir) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// KD CHART — Interactive hover tooltip
-// ═══════════════════════════════════════════════════════════════
-function initChartTooltips() {
-  document.querySelectorAll('.kd-chart').forEach(svg => {
-    const wrap    = svg.parentElement;
-    const tooltip = wrap.querySelector('.kd-tooltip');
-    const cross   = svg.querySelector('.kd-crosshair');
-    if (!tooltip || !cross) return;
-
-    const series  = JSON.parse(svg.dataset.series || '[]');
-    const padL    = parseFloat(svg.dataset.padL);
-    const cw      = parseFloat(svg.dataset.cw);
-    const maxT    = parseFloat(svg.dataset.maxt);
-
-    if (!series.length) return;
-
-    // Map from SVG viewBox X to closest data point
-    function getClosestPoint(svgX) {
-      // svgX is in viewBox units (0..300)
-      const tAtX = maxT - ((svgX - padL) / cw) * maxT;
-      let best = null, bestDist = Infinity;
-      series.forEach(pt => {
-        const d = Math.abs(pt.t - tAtX);
-        if (d < bestDist) { bestDist = d; best = pt; }
-      });
-      return best;
-    }
-
-    function getVBX(e) {
-      const rect   = svg.getBoundingClientRect();
-      const scaleX = 300 / rect.width; // viewBox width = 300
-      return (e.clientX - rect.left) * scaleX;
-    }
-
-    svg.addEventListener('mousemove', e => {
-      const vbX = getVBX(e);
-      // Only show tooltip within chart area
-      if (vbX < padL || vbX > padL + cw) {
-        tooltip.style.display = 'none';
-        cross.style.display = 'none';
-        return;
-      }
-
-      const pt = getClosestPoint(vbX);
-      if (!pt) return;
-
-      cross.setAttribute('x1', vbX.toFixed(1));
-      cross.setAttribute('x2', vbX.toFixed(1));
-      cross.style.display = '';
-
-      const timeLabel = pt.t === 0 ? 'now' : `-${pt.t}m`;
-      const fmtKD = v => v === null ? '—' : v.toFixed(2);
-
-      const colorMap = { r: '#ff7060', b: '#60c0ff', g: '#50e090' };
-      const labelMap = { r: 'Red', b: 'Blue', g: 'Green' };
-
-      const rows = ['r','b','g'].map(k => {
-        const val = fmtKD(pt[k]);
-        return `<div class="kd-tooltip-row">
-          <div class="kd-tooltip-dot" style="background:${colorMap[k]}"></div>
-          <span class="kd-tooltip-label">${labelMap[k]}</span>
-          <span class="kd-tooltip-val" style="color:${colorMap[k]}">${val}</span>
-        </div>`;
-      }).join('');
-
-      tooltip.innerHTML = `<div class="kd-tooltip-time">${timeLabel}</div>${rows}`;
-      tooltip.style.display = 'block';
-    });
-
-    svg.addEventListener('mouseleave', () => {
-      tooltip.style.display = 'none';
-      cross.style.display = 'none';
-    });
-  });
-}
-
-
 // ═══════════════════════════════════════════════════════════════
 // CONFRONTOS — Predicted Guild Confrontations
 // ═══════════════════════════════════════════════════════════════
