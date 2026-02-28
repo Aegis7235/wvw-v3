@@ -1412,59 +1412,308 @@ h1::after {
 }
 
 /* ══════════════════════════════════════════════
-   CONFRONTOS SECTION
+   CONFRONTOS — SEARCH BAR (below timelines)
 ══════════════════════════════════════════════ */
-#confrontos-section {
+#conf-search-section {
   position: relative; z-index: 5;
   max-width: 1580px;
   margin: 0 auto 4rem;
   padding: 0 1.5rem;
 }
 
-.confrontos-header {
+.conf-search-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 1.2rem 0 1rem;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 1.5rem;
-}
-
-.confrontos-tiers-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-  gap: 1.5rem;
-}
-
-.conf-card {
+  gap: 1rem;
+  padding: 1.1rem 1.4rem;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  overflow: hidden;
   position: relative;
-  animation: cardIn .5s ease both;
 }
-.conf-card::before {
+
+.conf-search-bar::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(192,57,46,0.4) 30%, rgba(48,144,208,0.4) 50%, rgba(48,176,96,0.4) 70%, transparent);
-  z-index: 2;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: linear-gradient(90deg, transparent, rgba(192,57,46,0.35) 25%, rgba(48,144,208,0.35) 50%, rgba(48,176,96,0.35) 75%, transparent);
 }
 
-.conf-card-head {
+.conf-search-label {
   display: flex;
   align-items: center;
-  gap: .7rem;
-  padding: .75rem 1.1rem;
-  background: linear-gradient(135deg, rgba(40,30,80,0.8) 0%, rgba(20,18,40,0.6) 100%);
+  gap: .55rem;
+  flex-shrink: 0;
+}
+
+.conf-search-label-icon {
+  font-size: 1rem;
+  filter: drop-shadow(0 0 6px rgba(212,169,66,0.4));
+}
+
+.conf-search-label-text {
+  font-family: var(--font-hud);
+  font-size: .65rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.conf-search-label-sub {
+  font-family: var(--font-body);
+  font-size: .78rem;
+  color: var(--muted);
+  font-style: italic;
+  white-space: nowrap;
+}
+
+.conf-search-sep {
+  width: 1px;
+  height: 28px;
+  background: var(--line2);
+  flex-shrink: 0;
+}
+
+/* Input wrapper */
+.conf-search-wrap {
+  position: relative;
+  flex: 1;
+  max-width: 420px;
+}
+
+.conf-search-input {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: .95rem;
+  padding: .48rem 2.2rem .48rem 2.2rem;
+  outline: none;
+  transition: border-color .2s, background .2s, box-shadow .2s;
+}
+.conf-search-input::placeholder { color: var(--muted); }
+.conf-search-input:focus {
+  border-color: var(--gold-dim);
+  background: rgba(212,169,66,0.05);
+  box-shadow: 0 0 0 2px rgba(212,169,66,0.1);
+}
+
+.conf-search-icon {
+  position: absolute;
+  left: .7rem; top: 50%;
+  transform: translateY(-50%);
+  font-size: .8rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.conf-search-clear {
+  position: absolute;
+  right: .55rem; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: .7rem;
+  padding: .15rem .3rem;
+  border-radius: var(--radius-sm);
+  transition: color .15s, background .15s;
+  display: none;
+  line-height: 1;
+}
+.conf-search-clear:hover { color: var(--text); background: rgba(255,255,255,0.08); }
+.conf-search-clear.visible { display: block; }
+
+/* Autocomplete dropdown */
+.conf-autocomplete {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0; right: 0;
+  background: var(--panel2);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius);
+  z-index: 200;
+  display: none;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+.conf-autocomplete.open { display: block; }
+
+.conf-ac-item {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .5rem .9rem;
+  cursor: pointer;
+  transition: background .12s;
+  border-bottom: 1px solid var(--line);
+}
+.conf-ac-item:last-child { border-bottom: none; }
+.conf-ac-item:hover, .conf-ac-item.selected { background: rgba(212,169,66,0.08); }
+
+.conf-ac-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.conf-ac-dot.red   { background: var(--red-mid);   box-shadow: 0 0 4px var(--red); }
+.conf-ac-dot.blue  { background: var(--blue-mid);  box-shadow: 0 0 4px var(--blue); }
+.conf-ac-dot.green { background: var(--green-mid); box-shadow: 0 0 4px var(--green); }
+
+.conf-ac-name {
+  font-family: var(--font-ui);
+  font-size: .9rem;
+  color: var(--text);
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.conf-ac-tag {
+  font-family: var(--font-hud);
+  font-size: .5rem;
+  color: var(--gold-dim);
+  letter-spacing: .06em;
+}
+.conf-ac-tier {
+  font-family: var(--font-hud);
+  font-size: .46rem;
+  color: var(--muted);
+  letter-spacing: .1em;
+}
+
+/* ══════════════════════════════════════════════
+   CONFRONTOS MODAL
+══════════════════════════════════════════════ */
+#conf-modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(4,3,10,0.82);
+  backdrop-filter: blur(6px);
+  z-index: 500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+#conf-modal-backdrop.open { display: flex; }
+
+.conf-modal {
+  background: var(--panel);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 640px;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  animation: confModalIn .22s cubic-bezier(.2,.8,.3,1) both;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+}
+@keyframes confModalIn {
+  from { opacity: 0; transform: translateY(18px) scale(.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+.conf-modal::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 1px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: linear-gradient(90deg, transparent, rgba(192,57,46,0.5) 25%, rgba(48,144,208,0.5) 50%, rgba(48,176,96,0.5) 75%, transparent);
+}
+
+.conf-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.1rem 1.3rem .9rem;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.conf-modal-title {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+}
+
+.conf-modal-guild {
+  font-family: var(--font-hud);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: .06em;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.conf-modal-guild-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.conf-modal-guild-dot.red   { background: var(--red-mid);   box-shadow: 0 0 6px var(--red); }
+.conf-modal-guild-dot.blue  { background: var(--blue-mid);  box-shadow: 0 0 6px var(--blue); }
+.conf-modal-guild-dot.green { background: var(--green-mid); box-shadow: 0 0 6px var(--green); }
+
+.conf-modal-sub {
+  font-family: var(--font-body);
+  font-size: .8rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.conf-modal-close {
+  background: none; border: none;
+  color: var(--muted);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: .2rem .4rem;
+  border-radius: var(--radius-sm);
+  transition: color .15s, background .15s;
+  line-height: 1;
+  margin-top: .1rem;
+}
+.conf-modal-close:hover { color: var(--text); background: rgba(255,255,255,0.07); }
+
+.conf-modal-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: .9rem 1.3rem 1.2rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line2) transparent;
+}
+.conf-modal-body::-webkit-scrollbar { width: 4px; }
+.conf-modal-body::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 2px; }
+
+/* Tier group inside modal */
+.conf-modal-tier {
+  margin-bottom: 1.2rem;
+}
+.conf-modal-tier:last-child { margin-bottom: 0; }
+
+.conf-modal-tier-head {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-bottom: .5rem;
+  padding-bottom: .35rem;
   border-bottom: 1px solid var(--line);
 }
 
-.conf-tier-num {
+.conf-modal-tier-num {
   font-family: var(--font-hud);
-  font-size: 1.2rem;
+  font-size: .75rem;
   font-weight: 900;
   background: linear-gradient(135deg, var(--gold-dim), var(--gold2));
   -webkit-background-clip: text;
@@ -1472,94 +1721,36 @@ h1::after {
   background-clip: text;
 }
 
-.conf-tier-label {
-  font-family: var(--font-ui);
-  font-size: .78rem;
-  font-weight: 600;
-  color: var(--text2);
+.conf-modal-tier-label {
+  font-family: var(--font-hud);
+  font-size: .48rem;
+  color: var(--muted);
+  letter-spacing: .12em;
   text-transform: uppercase;
-  letter-spacing: .08em;
 }
 
-/* Pair block: Red vs Blue, etc. */
-.conf-pair {
-  border-bottom: 1px solid var(--line);
-  padding: .75rem 1.1rem;
-}
-.conf-pair:last-child { border-bottom: none; }
-
-.conf-pair-title {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  margin-bottom: .55rem;
-}
-
-.conf-color-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.conf-color-dot.red   { background: var(--red-mid);   box-shadow: 0 0 5px var(--red); }
-.conf-color-dot.blue  { background: var(--blue-mid);  box-shadow: 0 0 5px var(--blue); }
-.conf-color-dot.green { background: var(--green-mid); box-shadow: 0 0 5px var(--green); }
-
-.conf-vs {
-  font-family: var(--font-hud);
-  font-size: .55rem;
-  font-weight: 700;
-  letter-spacing: .15em;
-  color: var(--muted);
-}
-
-.conf-heat {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: .3rem;
-}
-.conf-heat-bar {
-  height: 4px;
-  width: 60px;
-  background: var(--line);
-  border-radius: 2px;
-  overflow: hidden;
-}
-.conf-heat-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width .6s ease;
-}
-.conf-heat-label {
-  font-family: var(--font-hud);
-  font-size: .52rem;
-  color: var(--muted);
-  min-width: 28px;
-  text-align: right;
-}
-
-/* Clash slots */
-.conf-slots {
+/* Flat slot list */
+.conf-slot-list {
   display: flex;
   flex-direction: column;
-  gap: .28rem;
+  gap: .3rem;
 }
 
 .conf-slot {
   display: flex;
-  align-items: flex-start;
-  gap: .6rem;
-  padding: .35rem .55rem;
+  align-items: center;
+  gap: .65rem;
+  padding: .4rem .65rem;
   border-radius: var(--radius-sm);
-  background: rgba(255,255,255,0.02);
+  background: rgba(255,255,255,0.025);
   border: 1px solid var(--line);
   transition: border-color .15s, background .15s;
 }
-.conf-slot:hover { border-color: var(--line2); background: rgba(255,255,255,0.04); }
+.conf-slot:hover { border-color: var(--line2); background: rgba(255,255,255,0.045); }
 
 .conf-slot.conf-slot-now {
   border-color: var(--gold-dim);
-  background: rgba(212,169,66,0.06);
+  background: rgba(212,169,66,0.07);
   animation: slot-pulse 3s ease-in-out infinite;
 }
 @keyframes slot-pulse {
@@ -1571,25 +1762,26 @@ h1::after {
   background: rgba(192,57,46,0.04);
 }
 
+.conf-slot-day {
+  font-family: var(--font-hud);
+  font-size: .48rem;
+  letter-spacing: .12em;
+  color: var(--muted);
+  text-transform: uppercase;
+  min-width: 26px;
+  flex-shrink: 0;
+}
+
 .conf-slot-time {
   font-family: var(--font-hud);
-  font-size: .65rem;
+  font-size: .68rem;
   font-weight: 700;
   color: var(--gold);
   white-space: nowrap;
-  min-width: 90px;
+  min-width: 96px;
+  flex-shrink: 0;
 }
 .conf-slot.conf-slot-now .conf-slot-time { color: var(--gold2); }
-
-.conf-slot-day {
-  font-family: var(--font-hud);
-  font-size: .5rem;
-  letter-spacing: .1em;
-  color: var(--muted);
-  text-transform: uppercase;
-  white-space: nowrap;
-  min-width: 28px;
-}
 
 .conf-slot-guilds {
   display: flex;
@@ -1609,6 +1801,7 @@ h1::after {
 .conf-guild-pill.red   { background: var(--red-glow);   color: var(--red-text);   border: 1px solid var(--red-rim); }
 .conf-guild-pill.blue  { background: var(--blue-glow);  color: var(--blue-text);  border: 1px solid var(--blue-rim); }
 .conf-guild-pill.green { background: var(--green-glow); color: var(--green-text); border: 1px solid var(--green-rim); }
+.conf-guild-pill.mine  { outline: 2px solid var(--gold); outline-offset: 1px; }
 
 .conf-slot-badge {
   font-family: var(--font-hud);
@@ -1618,202 +1811,18 @@ h1::after {
   border-radius: 2px;
   text-transform: uppercase;
   flex-shrink: 0;
-  align-self: center;
 }
 .conf-slot-badge.now  { background: rgba(212,169,66,0.2); color: var(--gold);     border: 1px solid var(--gold-dim); }
 .conf-slot-badge.soon { background: rgba(192,57,46,0.2);  color: var(--red-text); border: 1px solid var(--red-rim); }
 
-.conf-empty {
+.conf-modal-empty {
   font-family: var(--font-body);
-  font-size: .82rem;
-  color: var(--muted);
-  font-style: italic;
-  padding: .5rem 0;
-}
-
-.conf-no-overlap {
-  font-family: var(--font-body);
-  font-size: .82rem;
-  color: var(--muted);
-  font-style: italic;
-  padding: .6rem 1.1rem;
-}
-
-/* ── Guild search box ── */
-.conf-search-wrap {
-  position: relative;
-  width: 280px;
-  flex-shrink: 0;
-}
-
-.conf-search-input {
-  width: 100%;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--line2);
-  border-radius: var(--radius);
-  color: var(--text);
-  font-family: var(--font-ui);
   font-size: .9rem;
-  padding: .45rem .9rem .45rem 2.1rem;
-  outline: none;
-  transition: border-color .2s, background .2s, box-shadow .2s;
-}
-.conf-search-input::placeholder { color: var(--muted); }
-.conf-search-input:focus {
-  border-color: var(--gold-dim);
-  background: rgba(212,169,66,0.05);
-  box-shadow: 0 0 0 2px rgba(212,169,66,0.08);
-}
-
-.conf-search-icon {
-  position: absolute;
-  left: .65rem; top: 50%;
-  transform: translateY(-50%);
-  font-size: .8rem;
-  color: var(--muted);
-  pointer-events: none;
-  user-select: none;
-}
-
-.conf-search-clear {
-  position: absolute;
-  right: .5rem; top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: .75rem;
-  padding: .1rem .3rem;
-  border-radius: var(--radius-sm);
-  transition: color .15s, background .15s;
-  display: none;
-}
-.conf-search-clear:hover { color: var(--text); background: rgba(255,255,255,0.07); }
-.conf-search-clear.visible { display: block; }
-
-/* Autocomplete dropdown */
-.conf-autocomplete {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0; right: 0;
-  background: var(--panel2);
-  border: 1px solid var(--line2);
-  border-radius: var(--radius);
-  z-index: 100;
-  overflow: hidden;
-  display: none;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-}
-.conf-autocomplete.open { display: block; }
-
-.conf-ac-item {
-  display: flex;
-  align-items: center;
-  gap: .55rem;
-  padding: .45rem .85rem;
-  cursor: pointer;
-  transition: background .12s;
-  border-bottom: 1px solid var(--line);
-}
-.conf-ac-item:last-child { border-bottom: none; }
-.conf-ac-item:hover, .conf-ac-item.selected { background: rgba(212,169,66,0.08); }
-
-.conf-ac-dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.conf-ac-dot.red   { background: var(--red-mid); }
-.conf-ac-dot.blue  { background: var(--blue-mid); }
-.conf-ac-dot.green { background: var(--green-mid); }
-.conf-ac-dot.unknown { background: var(--muted); }
-
-.conf-ac-name {
-  font-family: var(--font-ui);
-  font-size: .88rem;
-  color: var(--text);
-  font-weight: 500;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.conf-ac-tag {
-  font-family: var(--font-hud);
-  font-size: .52rem;
-  color: var(--gold-dim);
-  letter-spacing: .05em;
-  flex-shrink: 0;
-}
-.conf-ac-tier {
-  font-family: var(--font-hud);
-  font-size: .45rem;
-  color: var(--muted);
-  letter-spacing: .08em;
-  flex-shrink: 0;
-}
-
-/* Active filter pill in header */
-.conf-filter-active {
-  display: none;
-  align-items: center;
-  gap: .4rem;
-  background: rgba(212,169,66,0.1);
-  border: 1px solid var(--gold-dim);
-  border-radius: 2rem;
-  padding: .25rem .7rem .25rem .55rem;
-  font-family: var(--font-ui);
-  font-size: .8rem;
-  color: var(--gold);
-}
-.conf-filter-active.visible { display: flex; }
-.conf-filter-active-name { font-weight: 600; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.conf-filter-active-x {
-  background: none; border: none;
-  color: var(--gold-dim);
-  cursor: pointer;
-  font-size: .7rem;
-  padding: 0 .1rem;
-  transition: color .15s;
-}
-.conf-filter-active-x:hover { color: var(--gold); }
-
-/* Filter mode: cards that have matches become highlighted; empty ones fade */
-.conf-card.conf-card-match {
-  border-color: rgba(212,169,66,0.3);
-  box-shadow: 0 0 16px rgba(212,169,66,0.06);
-}
-.conf-card.conf-card-no-match {
-  opacity: 0.28;
-  pointer-events: none;
-}
-
-/* Highlight pills for the searched guild */
-.conf-guild-pill.highlight {
-  outline: 2px solid var(--gold);
-  outline-offset: 1px;
-  box-shadow: 0 0 8px rgba(212,169,66,0.35);
-}
-
-/* Slot dimmed when searched guild isn't involved */
-.conf-slot.conf-slot-dimmed {
-  opacity: 0.25;
-  pointer-events: none;
-}
-
-/* No-result state */
-.conf-no-results {
-  font-family: var(--font-body);
-  font-size: .95rem;
   color: var(--muted);
   font-style: italic;
   text-align: center;
-  padding: 2rem 1rem;
-  display: none;
+  padding: 2.5rem 1rem;
 }
-.conf-no-results.visible { display: block; }
 
 
 /* ══════════════════════════════════════════════
@@ -2278,33 +2287,44 @@ h1::after {
   <div id="timeline-tiers"></div>
 </div>
 
-<!-- ═══ CONFRONTOS ═══ -->
-<div id="confrontos-section" style="display:none">
-  <div class="confrontos-header">
-    <div class="timeline-title-wrap">
-      <span class="timeline-icon">🗡</span>
-      <span class="timeline-title">Predicted Confrontations</span>
-      <span class="timeline-sub">Guilds from opposing teams running at the same time</span>
+<!-- ═══ CONFRONTOS SEARCH BAR ═══ -->
+<div id="conf-search-section" style="display:none">
+  <div class="conf-search-bar">
+    <div class="conf-search-label">
+      <span class="conf-search-label-icon">🗡</span>
+      <div>
+        <div class="conf-search-label-text">Predicted Confrontations</div>
+        <div class="conf-search-label-sub">Search your guild to see potential clashes</div>
+      </div>
     </div>
-    <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
-      <div class="conf-filter-active" id="conf-filter-pill">
-        <span style="font-size:.65rem;opacity:.7;">viewing</span>
-        <span class="conf-filter-active-name" id="conf-filter-pill-name"></span>
-        <button class="conf-filter-active-x" onclick="confClearFilter()" title="Clear filter">✕</button>
-      </div>
-      <div class="conf-search-wrap">
-        <span class="conf-search-icon">🔍</span>
-        <input class="conf-search-input" id="conf-search-input" type="text"
-               placeholder="Search your guild…" autocomplete="off"
-               oninput="confSearchInput(this.value)"
-               onkeydown="confSearchKey(event)">
-        <button class="conf-search-clear" id="conf-search-clear" onclick="confClearFilter()" title="Clear">✕</button>
-        <div class="conf-autocomplete" id="conf-autocomplete"></div>
-      </div>
+    <div class="conf-search-sep"></div>
+    <div class="conf-search-wrap">
+      <span class="conf-search-icon">🔍</span>
+      <input class="conf-search-input" id="conf-search-input" type="text"
+             placeholder="Type guild name or tag…" autocomplete="off"
+             oninput="confSearchInput(this.value)"
+             onkeydown="confSearchKey(event)">
+      <button class="conf-search-clear" id="conf-search-clear" onclick="confClearSearch()" title="Clear">✕</button>
+      <div class="conf-autocomplete" id="conf-autocomplete"></div>
     </div>
   </div>
-  <p class="conf-no-results" id="conf-no-results">No confrontations found involving this guild.</p>
-  <div id="confrontos-tiers"></div>
+</div>
+
+<!-- ═══ CONFRONTOS MODAL ═══ -->
+<div id="conf-modal-backdrop" onclick="confCloseModal(event)">
+  <div class="conf-modal" onclick="event.stopPropagation()">
+    <div class="conf-modal-head">
+      <div class="conf-modal-title">
+        <div class="conf-modal-guild">
+          <span class="conf-modal-guild-dot" id="conf-modal-dot"></span>
+          <span id="conf-modal-guild-name"></span>
+        </div>
+        <div class="conf-modal-sub" id="conf-modal-sub"></div>
+      </div>
+      <button class="conf-modal-close" onclick="confCloseModal()">✕</button>
+    </div>
+    <div class="conf-modal-body" id="conf-modal-body"></div>
+  </div>
 </div>
 
 <!-- ═══ SCHEDULE REQUEST MODAL ═══ -->
@@ -3401,21 +3421,24 @@ function heatColor(pct) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// CONFRONTOS — Guild Search Filter
+// CONFRONTOS — Search + Modal
 // ═══════════════════════════════════════════════════════════════
 
-let confAllGuilds  = []; // { name, tag, color, tierNum, matchId }
-let confFilterName = null; // currently filtered guild name (lowercase)
-let confAcIndex    = -1;
+let confAllGuilds     = []; // { name, tag, color, tierNum, matchId, guildObj }
+let confMatchesData   = [];
+let confScheduleData  = {};
+let confAcIndex       = -1;
 
 function confBuildGuildList(matches, scheduleByMatch) {
-  confAllGuilds = [];
+  confAllGuilds  = [];
+  confMatchesData  = matches;
+  confScheduleData = scheduleByMatch;
   matches.forEach((match, idx) => {
     const tierNum = idx + 1;
     const sched   = scheduleByMatch[match.id] || {};
     ['red','blue','green'].forEach(color => {
       (sched[color] || []).forEach(g => {
-        confAllGuilds.push({ name: g.guild, tag: g.tag || '', color, tierNum, matchId: match.id });
+        confAllGuilds.push({ name: g.guild, tag: g.tag || '', color, tierNum, matchId: match.id, guildObj: g });
       });
     });
   });
@@ -3425,41 +3448,31 @@ function confSearchInput(val) {
   const clearBtn = document.getElementById('conf-search-clear');
   clearBtn.classList.toggle('visible', val.length > 0);
 
-  const q = val.trim().toLowerCase();
+  const q  = val.trim().toLowerCase();
   const ac = document.getElementById('conf-autocomplete');
 
-  if (!q) {
-    ac.classList.remove('open');
-    ac.innerHTML = '';
-    confAcIndex = -1;
-    // If there's no active filter either, just show all
-    if (!confFilterName) confApplyFilter(null);
-    return;
-  }
+  if (!q) { ac.classList.remove('open'); ac.innerHTML = ''; confAcIndex = -1; return; }
 
   const hits = confAllGuilds.filter(g =>
     g.name.toLowerCase().includes(q) || g.tag.toLowerCase().includes(q)
   ).slice(0, 10);
 
-  if (!hits.length) {
-    ac.classList.remove('open');
-    ac.innerHTML = '';
-    return;
-  }
+  if (!hits.length) { ac.classList.remove('open'); ac.innerHTML = ''; return; }
 
   confAcIndex = -1;
   ac.innerHTML = hits.map((g, i) => `
-    <div class="conf-ac-item" data-idx="${i}" onmousedown="confSelectGuild(event,'${esc(g.name)}')">
+    <div class="conf-ac-item" data-idx="${i}" onmousedown="confPickGuild(event,${i})">
       <span class="conf-ac-dot ${g.color}"></span>
       <span class="conf-ac-name">${esc(g.name)}</span>
       ${g.tag ? `<span class="conf-ac-tag">[${esc(g.tag)}]</span>` : ''}
       <span class="conf-ac-tier">T${g.tierNum}</span>
     </div>`).join('');
+  ac._hits = hits;
   ac.classList.add('open');
 }
 
 function confSearchKey(e) {
-  const ac = document.getElementById('conf-autocomplete');
+  const ac    = document.getElementById('conf-autocomplete');
   const items = ac.querySelectorAll('.conf-ac-item');
   if (!items.length) return;
 
@@ -3473,102 +3486,28 @@ function confSearchKey(e) {
     items.forEach((el, i) => el.classList.toggle('selected', i === confAcIndex));
   } else if (e.key === 'Enter') {
     e.preventDefault();
-    if (confAcIndex >= 0 && items[confAcIndex]) {
-      const guildName = confAllGuilds[confAcIndex]?.name;
-      if (guildName) confApplyFilter(guildName);
-    }
+    if (confAcIndex >= 0) confPickGuild(null, confAcIndex);
+    else if (ac._hits?.length) confPickGuild(null, 0);
   } else if (e.key === 'Escape') {
     ac.classList.remove('open');
     confAcIndex = -1;
   }
 }
 
-function confSelectGuild(e, name) {
-  e.preventDefault();
-  confApplyFilter(name);
-}
-
-function confApplyFilter(name) {
-  const input  = document.getElementById('conf-search-input');
-  const ac     = document.getElementById('conf-autocomplete');
-  const pill   = document.getElementById('conf-filter-pill');
-  const pillNm = document.getElementById('conf-filter-pill-name');
-  const clearB = document.getElementById('conf-search-clear');
-
+function confPickGuild(e, idx) {
+  if (e) e.preventDefault();
+  const ac   = document.getElementById('conf-autocomplete');
+  const hit  = ac._hits?.[idx];
+  if (!hit) return;
   ac.classList.remove('open');
-
-  if (!name) {
-    confFilterName = null;
-    input.value = '';
-    clearB.classList.remove('visible');
-    pill.classList.remove('visible');
-    confRenderFiltered(null);
-    return;
-  }
-
-  confFilterName = name.toLowerCase();
-  input.value    = name;
-  clearB.classList.add('visible');
-  pillNm.textContent = name;
-  pill.classList.add('visible');
-  confRenderFiltered(confFilterName);
+  confOpenModal(hit);
 }
 
-function confClearFilter() {
-  confApplyFilter(null);
-}
-
-function confRenderFiltered(filterNameLower) {
-  const noResults = document.getElementById('conf-no-results');
-  const cards = document.querySelectorAll('#confrontos-tiers .conf-card');
-  let totalVisible = 0;
-
-  cards.forEach(card => {
-    if (!filterNameLower) {
-      // Reset everything
-      card.classList.remove('conf-card-match', 'conf-card-no-match');
-      card.querySelectorAll('.conf-slot').forEach(s => {
-        s.classList.remove('conf-slot-dimmed');
-      });
-      card.querySelectorAll('.conf-guild-pill').forEach(p => {
-        p.classList.remove('highlight');
-      });
-      card.querySelectorAll('.conf-pair').forEach(p => {
-        p.style.display = '';
-      });
-      return;
-    }
-
-    let cardHasMatch = false;
-
-    card.querySelectorAll('.conf-pair').forEach(pairDiv => {
-      let pairHasMatch = false;
-
-      pairDiv.querySelectorAll('.conf-slot').forEach(slotEl => {
-        const pills = slotEl.querySelectorAll('.conf-guild-pill');
-        let slotMatches = false;
-
-        pills.forEach(pill => {
-          const pillText = pill.textContent.toLowerCase();
-          const matches  = pillText.includes(filterNameLower);
-          pill.classList.toggle('highlight', matches);
-          if (matches) slotMatches = true;
-        });
-
-        slotEl.classList.toggle('conf-slot-dimmed', !slotMatches);
-        if (slotMatches) pairHasMatch = true;
-      });
-
-      pairDiv.style.display = pairHasMatch ? '' : 'none';
-      if (pairHasMatch) cardHasMatch = true;
-    });
-
-    card.classList.toggle('conf-card-match',    cardHasMatch);
-    card.classList.toggle('conf-card-no-match', !cardHasMatch);
-    if (cardHasMatch) totalVisible++;
-  });
-
-  noResults.classList.toggle('visible', filterNameLower && totalVisible === 0);
+function confClearSearch() {
+  document.getElementById('conf-search-input').value = '';
+  document.getElementById('conf-search-clear').classList.remove('visible');
+  document.getElementById('conf-autocomplete').classList.remove('open');
+  confAcIndex = -1;
 }
 
 // Close autocomplete on outside click
@@ -3579,123 +3518,152 @@ document.addEventListener('click', e => {
   }
 });
 
-function renderConfrontos(matches, scheduleByMatch) {
-  const section = document.getElementById('confrontos-section');
-  const container = document.getElementById('confrontos-tiers');
-  section.style.display = 'block';
-  container.innerHTML = '';
+// ── Modal open/close ────────────────────────────────────────────
+function confOpenModal(guildEntry) {
+  const { name, tag, color, tierNum, matchId, guildObj } = guildEntry;
 
-  confBuildGuildList(matches, scheduleByMatch);
-
-  const grid = document.createElement('div');
-  grid.className = 'confrontos-tiers-grid';
-
+  // Build the confrontation data
+  const sched = confScheduleData[matchId] || {};
   const PAIRS = [
-    { a: 'red',  b: 'blue',  label: 'Red vs Blue'  },
-    { a: 'red',  b: 'green', label: 'Red vs Green' },
-    { a: 'blue', b: 'green', label: 'Blue vs Green'},
+    { a: 'red',  b: 'blue'  },
+    { a: 'red',  b: 'green' },
+    { a: 'blue', b: 'green' },
   ];
 
-  matches.forEach((match, idx) => {
-    const tierNum = idx + 1;
-    const sched   = scheduleByMatch[match.id] || {};
+  // Find which color this guild belongs to and collect all opponent overlaps
+  const myIntervals = guildWeekIntervals(guildObj);
+  const allSlots    = []; // { start, end, day, opponents: [{name,tag,color}] }
 
-    const card = document.createElement('div');
-    card.className = 'conf-card';
-    card.innerHTML = `
-      <div class="conf-card-head">
-        <span class="conf-tier-num">${String(tierNum).padStart(2,'0')}</span>
-        <span class="conf-tier-label">Tier · Predicted Confrontations</span>
-      </div>`;
+  PAIRS.forEach(pair => {
+    const oppColor = pair.a === color ? pair.b : (pair.b === color ? pair.a : null);
+    if (!oppColor) return; // this pair doesn't involve our color
 
-    let anyPair = false;
+    const opponents = sched[oppColor] || [];
+    opponents.forEach(opp => {
+      const oppIntervals = guildWeekIntervals(opp);
+      const overlaps = computeOverlaps(myIntervals, oppIntervals);
+      overlaps.forEach(ov => {
+        allSlots.push({
+          start: ov.start,
+          end:   ov.end,
+          day:   Math.floor(ov.start / 1440) % 7,
+          opponent: { name: opp.guild, tag: opp.tag || '', color: oppColor },
+        });
+      });
+    });
+  });
 
-    PAIRS.forEach(pair => {
-      const guildsA = sched[pair.a] || [];
-      const guildsB = sched[pair.b] || [];
-      if (!guildsA.length || !guildsB.length) return;
+  // Sort by day then start time
+  allSlots.sort((a, b) => a.start - b.start);
 
-      // Build week intervals for each side
-      const intA = guildsA.flatMap(g => guildWeekIntervals(g));
-      const intB = guildsB.flatMap(g => guildWeekIntervals(g));
-      if (!intA.length || !intB.length) return;
+  // Merge slots at same time that share the same opponent set into groups
+  // Group by day for display
+  const byDay = {};
+  allSlots.forEach(s => {
+    const d = s.day;
+    if (!byDay[d]) byDay[d] = [];
+    // Check if a slot at same timeWindow already exists
+    const existing = byDay[d].find(x => Math.abs(x.start - s.start) < 15 && Math.abs(x.end - s.end) < 15);
+    if (existing) {
+      // Add opponent if not already there
+      if (!existing.opponents.some(o => o.name === s.opponent.name)) {
+        existing.opponents.push(s.opponent);
+      }
+    } else {
+      byDay[d].push({ start: s.start, end: s.end, day: s.day, opponents: [s.opponent] });
+    }
+  });
 
-      const raw     = computeOverlaps(intA, intB);
-      if (!raw.length) return;
+  const tierIdx = confMatchesData.findIndex(m => m.id === matchId);
+  const tierLabel = tierIdx >= 0 ? `Tier ${tierIdx + 1}` : '';
 
-      const merged  = mergeOverlaps(raw, pair.a, pair.b);
+  // Populate modal head
+  document.getElementById('conf-modal-dot').className = `conf-modal-guild-dot ${color}`;
+  document.getElementById('conf-modal-guild-name').textContent = tag ? `${name} [${tag}]` : name;
+  const totalSlots = allSlots.length;
+  document.getElementById('conf-modal-sub').textContent =
+    totalSlots
+      ? `${totalSlots} confrontation window${totalSlots !== 1 ? 's' : ''} this week · ${tierLabel}`
+      : `No overlapping schedules found · ${tierLabel}`;
 
-      // Total overlap minutes across week (capped at 7*24*60 for heat calc)
-      const totalOvMin = raw.reduce((s, o) => s + (o.end - o.start), 0);
-      const heatPct    = Math.min(100, Math.round(totalOvMin / 60 / 7 * 100 / 3)); // rough scale
-      const heatW      = Math.max(4, Math.min(100, heatPct));
+  // Populate modal body
+  const body = document.getElementById('conf-modal-body');
+  body.innerHTML = '';
 
-      anyPair = true;
+  if (!totalSlots) {
+    body.innerHTML = '<div class="conf-modal-empty">No guilds from opposing teams run at the same time as this guild.</div>';
+  } else {
+    const DAYS_PT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    Object.keys(byDay).sort((a,b) => +a - +b).forEach(dayIdx => {
+      const slots = byDay[dayIdx];
 
-      const pairDiv = document.createElement('div');
-      pairDiv.className = 'conf-pair';
+      const tierSection = document.createElement('div');
+      tierSection.className = 'conf-modal-tier';
 
-      // Header
-      pairDiv.innerHTML = `
-        <div class="conf-pair-title">
-          <span class="conf-color-dot ${pair.a}"></span>
-          <span class="conf-vs">${pair.label.toUpperCase()}</span>
-          <span class="conf-color-dot ${pair.b}"></span>
-          <div class="conf-heat">
-            <div class="conf-heat-bar">
-              <div class="conf-heat-fill" style="width:${heatW}%;background:${heatColor(heatPct)}"></div>
-            </div>
-            <span class="conf-heat-label">${totalOvMin >= 60
-              ? Math.round(totalOvMin/60) + 'h'
-              : totalOvMin + 'm'}/wk</span>
-          </div>
+      tierSection.innerHTML = `
+        <div class="conf-modal-tier-head">
+          <span class="conf-modal-tier-num">${DAYS_PT[+dayIdx]}</span>
+          <span class="conf-modal-tier-label">${slots.length} clash window${slots.length !== 1 ? 's' : ''}</span>
         </div>`;
 
-      const slotsDiv = document.createElement('div');
-      slotsDiv.className = 'conf-slots';
+      const list = document.createElement('div');
+      list.className = 'conf-slot-list';
 
-      merged.forEach(slot => {
+      slots.forEach(slot => {
         const isNow  = isNowInSlot(slot.start, slot.end);
         const isSoon = !isNow && isSoonSlot(slot.start);
         const slotEl = document.createElement('div');
         slotEl.className = 'conf-slot' + (isNow ? ' conf-slot-now' : isSoon ? ' conf-slot-soon' : '');
 
         const timeStr = minToHHMM(slot.start) + ' – ' + minToHHMM(slot.end);
-        const dayStr  = DAYS_PT_CONF[slot.day % 7];
         const badge   = isNow  ? '<span class="conf-slot-badge now">● now</span>'
                       : isSoon ? '<span class="conf-slot-badge soon">soon</span>' : '';
 
-        const pillsA = [...slot.guilds[pair.a]].map(n => `<span class="conf-guild-pill ${pair.a}">${esc(n)}</span>`).join('');
-        const pillsB = [...slot.guilds[pair.b]].map(n => `<span class="conf-guild-pill ${pair.b}">${esc(n)}</span>`).join('');
+        // My guild pill (highlighted)
+        const myPill = `<span class="conf-guild-pill ${color} mine">${esc(tag ? `${name} [${tag}]` : name)}</span>`;
+        // Opponent pills
+        const oppPills = slot.opponents.map(o =>
+          `<span class="conf-guild-pill ${o.color}">${esc(o.tag ? `${o.name} [${o.tag}]` : o.name)}</span>`
+        ).join('');
 
         slotEl.innerHTML = `
-          <span class="conf-slot-day">${dayStr}</span>
+          <span class="conf-slot-day">${DAYS_PT[slot.day]}</span>
           <span class="conf-slot-time">${timeStr}</span>
-          <div class="conf-slot-guilds">${pillsA}${pillsB}</div>
+          <div class="conf-slot-guilds">${myPill}${oppPills}</div>
           ${badge}`;
 
-        slotsDiv.appendChild(slotEl);
+        list.appendChild(slotEl);
       });
 
-      pairDiv.appendChild(slotsDiv);
-      card.appendChild(pairDiv);
+      tierSection.appendChild(list);
+      body.appendChild(tierSection);
     });
+  }
 
-    if (!anyPair) {
-      card.innerHTML += '<p class="conf-no-overlap">No overlapping schedules found for this tier.</p>';
-    }
+  document.getElementById('conf-modal-backdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
 
-    grid.appendChild(card);
-  });
+function confCloseModal(e) {
+  if (e && e.target !== document.getElementById('conf-modal-backdrop')) return;
+  document.getElementById('conf-modal-backdrop').classList.remove('open');
+  document.body.style.overflow = '';
+}
 
-  container.appendChild(grid);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('conf-modal-backdrop')?.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+});
 
-  // Re-apply any active filter after rebuild
-  if (confFilterName) confRenderFiltered(confFilterName);
+function renderConfrontos(matches, scheduleByMatch) {
+  confBuildGuildList(matches, scheduleByMatch);
+  document.getElementById('conf-search-section').style.display = 'block';
 
-  // Refresh "now/soon" badges every minute (only register once)
+  // Refresh guild list every minute (data stays in memory)
   if (!renderConfrontos._timer) {
-    renderConfrontos._timer = setInterval(() => renderConfrontos(matches, scheduleByMatch), 60000);
+    renderConfrontos._timer = setInterval(() => confBuildGuildList(matches, scheduleByMatch), 60000);
   }
 }
 
