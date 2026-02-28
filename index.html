@@ -1639,6 +1639,182 @@ h1::after {
   padding: .6rem 1.1rem;
 }
 
+/* ── Guild search box ── */
+.conf-search-wrap {
+  position: relative;
+  width: 280px;
+  flex-shrink: 0;
+}
+
+.conf-search-input {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: .9rem;
+  padding: .45rem .9rem .45rem 2.1rem;
+  outline: none;
+  transition: border-color .2s, background .2s, box-shadow .2s;
+}
+.conf-search-input::placeholder { color: var(--muted); }
+.conf-search-input:focus {
+  border-color: var(--gold-dim);
+  background: rgba(212,169,66,0.05);
+  box-shadow: 0 0 0 2px rgba(212,169,66,0.08);
+}
+
+.conf-search-icon {
+  position: absolute;
+  left: .65rem; top: 50%;
+  transform: translateY(-50%);
+  font-size: .8rem;
+  color: var(--muted);
+  pointer-events: none;
+  user-select: none;
+}
+
+.conf-search-clear {
+  position: absolute;
+  right: .5rem; top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: .75rem;
+  padding: .1rem .3rem;
+  border-radius: var(--radius-sm);
+  transition: color .15s, background .15s;
+  display: none;
+}
+.conf-search-clear:hover { color: var(--text); background: rgba(255,255,255,0.07); }
+.conf-search-clear.visible { display: block; }
+
+/* Autocomplete dropdown */
+.conf-autocomplete {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: var(--panel2);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius);
+  z-index: 100;
+  overflow: hidden;
+  display: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.conf-autocomplete.open { display: block; }
+
+.conf-ac-item {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .45rem .85rem;
+  cursor: pointer;
+  transition: background .12s;
+  border-bottom: 1px solid var(--line);
+}
+.conf-ac-item:last-child { border-bottom: none; }
+.conf-ac-item:hover, .conf-ac-item.selected { background: rgba(212,169,66,0.08); }
+
+.conf-ac-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.conf-ac-dot.red   { background: var(--red-mid); }
+.conf-ac-dot.blue  { background: var(--blue-mid); }
+.conf-ac-dot.green { background: var(--green-mid); }
+.conf-ac-dot.unknown { background: var(--muted); }
+
+.conf-ac-name {
+  font-family: var(--font-ui);
+  font-size: .88rem;
+  color: var(--text);
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.conf-ac-tag {
+  font-family: var(--font-hud);
+  font-size: .52rem;
+  color: var(--gold-dim);
+  letter-spacing: .05em;
+  flex-shrink: 0;
+}
+.conf-ac-tier {
+  font-family: var(--font-hud);
+  font-size: .45rem;
+  color: var(--muted);
+  letter-spacing: .08em;
+  flex-shrink: 0;
+}
+
+/* Active filter pill in header */
+.conf-filter-active {
+  display: none;
+  align-items: center;
+  gap: .4rem;
+  background: rgba(212,169,66,0.1);
+  border: 1px solid var(--gold-dim);
+  border-radius: 2rem;
+  padding: .25rem .7rem .25rem .55rem;
+  font-family: var(--font-ui);
+  font-size: .8rem;
+  color: var(--gold);
+}
+.conf-filter-active.visible { display: flex; }
+.conf-filter-active-name { font-weight: 600; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conf-filter-active-x {
+  background: none; border: none;
+  color: var(--gold-dim);
+  cursor: pointer;
+  font-size: .7rem;
+  padding: 0 .1rem;
+  transition: color .15s;
+}
+.conf-filter-active-x:hover { color: var(--gold); }
+
+/* Filter mode: cards that have matches become highlighted; empty ones fade */
+.conf-card.conf-card-match {
+  border-color: rgba(212,169,66,0.3);
+  box-shadow: 0 0 16px rgba(212,169,66,0.06);
+}
+.conf-card.conf-card-no-match {
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+/* Highlight pills for the searched guild */
+.conf-guild-pill.highlight {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+  box-shadow: 0 0 8px rgba(212,169,66,0.35);
+}
+
+/* Slot dimmed when searched guild isn't involved */
+.conf-slot.conf-slot-dimmed {
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+/* No-result state */
+.conf-no-results {
+  font-family: var(--font-body);
+  font-size: .95rem;
+  color: var(--muted);
+  font-style: italic;
+  text-align: center;
+  padding: 2rem 1rem;
+  display: none;
+}
+.conf-no-results.visible { display: block; }
+
 
 /* ══════════════════════════════════════════════
    REQUEST BUTTON
@@ -2110,7 +2286,24 @@ h1::after {
       <span class="timeline-title">Predicted Confrontations</span>
       <span class="timeline-sub">Guilds from opposing teams running at the same time</span>
     </div>
+    <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+      <div class="conf-filter-active" id="conf-filter-pill">
+        <span style="font-size:.65rem;opacity:.7;">viewing</span>
+        <span class="conf-filter-active-name" id="conf-filter-pill-name"></span>
+        <button class="conf-filter-active-x" onclick="confClearFilter()" title="Clear filter">✕</button>
+      </div>
+      <div class="conf-search-wrap">
+        <span class="conf-search-icon">🔍</span>
+        <input class="conf-search-input" id="conf-search-input" type="text"
+               placeholder="Search your guild…" autocomplete="off"
+               oninput="confSearchInput(this.value)"
+               onkeydown="confSearchKey(event)">
+        <button class="conf-search-clear" id="conf-search-clear" onclick="confClearFilter()" title="Clear">✕</button>
+        <div class="conf-autocomplete" id="conf-autocomplete"></div>
+      </div>
+    </div>
   </div>
+  <p class="conf-no-results" id="conf-no-results">No confrontations found involving this guild.</p>
   <div id="confrontos-tiers"></div>
 </div>
 
@@ -2580,17 +2773,21 @@ function tlTimeToMinutes(str) {
 }
 
 function tlParseSlot(utcStr) {
-  // Parse "HH:MM - HH:MM" — schedule is stored in BRT (UTC-3)
-  // Convert to the currently selected timezone
-  const m = utcStr.match(/^(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})$/);
-  if (!m) return null;
-  const brtStart = (+m[1]) * 60 + (+m[2]);
-  const brtEnd   = (+m[3]) * 60 + (+m[4]);
-  // BRT = UTC-3. Convert BRT→UTC→selectedTz
-  const tzDiffFromBRT = tlTzOffset - (-3); // e.g. UTC-5 → diff = -2
-  const startMin = ((brtStart + tzDiffFromBRT * 60) % 1440 + 1440) % 1440;
-  const endMin   = ((brtEnd   + tzDiffFromBRT * 60) % 1440 + 1440) % 1440;
-  return { startMin, endMin };
+  // Parse "HH:MM - HH:MM" or "HH:MM - HH:MM / HH:MM - HH:MM" (multiple runs per day)
+  // Schedule is stored in BRT (UTC-3). Convert to currently selected timezone.
+  const tzDiffFromBRT = tlTzOffset - (-3);
+  const parts = utcStr.split('/').map(s => s.trim());
+  const results = [];
+  for (const part of parts) {
+    const m = part.match(/^(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})$/);
+    if (!m) continue;
+    const brtStart = (+m[1]) * 60 + (+m[2]);
+    const brtEnd   = (+m[3]) * 60 + (+m[4]);
+    const startMin = ((brtStart + tzDiffFromBRT * 60) % 1440 + 1440) % 1440;
+    const endMin   = ((brtEnd   + tzDiffFromBRT * 60) % 1440 + 1440) % 1440;
+    results.push({ startMin, endMin });
+  }
+  return results.length ? results : null;
 }
 
 function tlBarStyle(startMin, endMin, nowMinutes, crossesMidnight) {
@@ -2700,10 +2897,12 @@ function buildColorGroup(guilds, color, day, tooltip, canvasDiv) {
         }
         return;
       }
-      const parsed = tlParseSlot(daySlot.utc);
-      if (!parsed) return;
-      const bar = buildBar(g, parsed, color, false, dayOffset, tooltip);
-      if (bar) trackDiv.appendChild(bar);
+      const parsedSlots = tlParseSlot(daySlot.utc);
+      if (!parsedSlots) return;
+      parsedSlots.forEach(parsed => {
+        const bar = buildBar(g, parsed, color, false, dayOffset, tooltip);
+        if (bar) trackDiv.appendChild(bar);
+      });
     });
 
     rowDiv.appendChild(trackDiv);
@@ -3123,12 +3322,16 @@ function guildWeekIntervals(g) {
   DAYS_EN_CONF.forEach((day, di) => {
     const slot = g.schedule[day];
     if (!slot || slot.utc === 'TBC') return;
-    const m = slot.utc.match(/^(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})$/);
-    if (!m) return;
-    const start = di * 1440 + (+m[1]) * 60 + (+m[2]);
-    let   end   = di * 1440 + (+m[3]) * 60 + (+m[4]);
-    if (end <= start) end += 1440; // crosses midnight
-    intervals.push({ start, end, guild: g.guild, tag: g.tag, day: di });
+    // Support multiple runs per day separated by " / "
+    const parts = slot.utc.split('/').map(s => s.trim());
+    parts.forEach(part => {
+      const m = part.match(/^(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})$/);
+      if (!m) return;
+      const start = di * 1440 + (+m[1]) * 60 + (+m[2]);
+      let   end   = di * 1440 + (+m[3]) * 60 + (+m[4]);
+      if (end <= start) end += 1440; // crosses midnight
+      intervals.push({ start, end, guild: g.guild, tag: g.tag, day: di });
+    });
   });
   return intervals;
 }
@@ -3197,11 +3400,192 @@ function heatColor(pct) {
   return '#e05040';
 }
 
+// ═══════════════════════════════════════════════════════════════
+// CONFRONTOS — Guild Search Filter
+// ═══════════════════════════════════════════════════════════════
+
+let confAllGuilds  = []; // { name, tag, color, tierNum, matchId }
+let confFilterName = null; // currently filtered guild name (lowercase)
+let confAcIndex    = -1;
+
+function confBuildGuildList(matches, scheduleByMatch) {
+  confAllGuilds = [];
+  matches.forEach((match, idx) => {
+    const tierNum = idx + 1;
+    const sched   = scheduleByMatch[match.id] || {};
+    ['red','blue','green'].forEach(color => {
+      (sched[color] || []).forEach(g => {
+        confAllGuilds.push({ name: g.guild, tag: g.tag || '', color, tierNum, matchId: match.id });
+      });
+    });
+  });
+}
+
+function confSearchInput(val) {
+  const clearBtn = document.getElementById('conf-search-clear');
+  clearBtn.classList.toggle('visible', val.length > 0);
+
+  const q = val.trim().toLowerCase();
+  const ac = document.getElementById('conf-autocomplete');
+
+  if (!q) {
+    ac.classList.remove('open');
+    ac.innerHTML = '';
+    confAcIndex = -1;
+    // If there's no active filter either, just show all
+    if (!confFilterName) confApplyFilter(null);
+    return;
+  }
+
+  const hits = confAllGuilds.filter(g =>
+    g.name.toLowerCase().includes(q) || g.tag.toLowerCase().includes(q)
+  ).slice(0, 10);
+
+  if (!hits.length) {
+    ac.classList.remove('open');
+    ac.innerHTML = '';
+    return;
+  }
+
+  confAcIndex = -1;
+  ac.innerHTML = hits.map((g, i) => `
+    <div class="conf-ac-item" data-idx="${i}" onmousedown="confSelectGuild(event,'${esc(g.name)}')">
+      <span class="conf-ac-dot ${g.color}"></span>
+      <span class="conf-ac-name">${esc(g.name)}</span>
+      ${g.tag ? `<span class="conf-ac-tag">[${esc(g.tag)}]</span>` : ''}
+      <span class="conf-ac-tier">T${g.tierNum}</span>
+    </div>`).join('');
+  ac.classList.add('open');
+}
+
+function confSearchKey(e) {
+  const ac = document.getElementById('conf-autocomplete');
+  const items = ac.querySelectorAll('.conf-ac-item');
+  if (!items.length) return;
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    confAcIndex = Math.min(confAcIndex + 1, items.length - 1);
+    items.forEach((el, i) => el.classList.toggle('selected', i === confAcIndex));
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    confAcIndex = Math.max(confAcIndex - 1, 0);
+    items.forEach((el, i) => el.classList.toggle('selected', i === confAcIndex));
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (confAcIndex >= 0 && items[confAcIndex]) {
+      const guildName = confAllGuilds[confAcIndex]?.name;
+      if (guildName) confApplyFilter(guildName);
+    }
+  } else if (e.key === 'Escape') {
+    ac.classList.remove('open');
+    confAcIndex = -1;
+  }
+}
+
+function confSelectGuild(e, name) {
+  e.preventDefault();
+  confApplyFilter(name);
+}
+
+function confApplyFilter(name) {
+  const input  = document.getElementById('conf-search-input');
+  const ac     = document.getElementById('conf-autocomplete');
+  const pill   = document.getElementById('conf-filter-pill');
+  const pillNm = document.getElementById('conf-filter-pill-name');
+  const clearB = document.getElementById('conf-search-clear');
+
+  ac.classList.remove('open');
+
+  if (!name) {
+    confFilterName = null;
+    input.value = '';
+    clearB.classList.remove('visible');
+    pill.classList.remove('visible');
+    confRenderFiltered(null);
+    return;
+  }
+
+  confFilterName = name.toLowerCase();
+  input.value    = name;
+  clearB.classList.add('visible');
+  pillNm.textContent = name;
+  pill.classList.add('visible');
+  confRenderFiltered(confFilterName);
+}
+
+function confClearFilter() {
+  confApplyFilter(null);
+}
+
+function confRenderFiltered(filterNameLower) {
+  const noResults = document.getElementById('conf-no-results');
+  const cards = document.querySelectorAll('#confrontos-tiers .conf-card');
+  let totalVisible = 0;
+
+  cards.forEach(card => {
+    if (!filterNameLower) {
+      // Reset everything
+      card.classList.remove('conf-card-match', 'conf-card-no-match');
+      card.querySelectorAll('.conf-slot').forEach(s => {
+        s.classList.remove('conf-slot-dimmed');
+      });
+      card.querySelectorAll('.conf-guild-pill').forEach(p => {
+        p.classList.remove('highlight');
+      });
+      card.querySelectorAll('.conf-pair').forEach(p => {
+        p.style.display = '';
+      });
+      return;
+    }
+
+    let cardHasMatch = false;
+
+    card.querySelectorAll('.conf-pair').forEach(pairDiv => {
+      let pairHasMatch = false;
+
+      pairDiv.querySelectorAll('.conf-slot').forEach(slotEl => {
+        const pills = slotEl.querySelectorAll('.conf-guild-pill');
+        let slotMatches = false;
+
+        pills.forEach(pill => {
+          const pillText = pill.textContent.toLowerCase();
+          const matches  = pillText.includes(filterNameLower);
+          pill.classList.toggle('highlight', matches);
+          if (matches) slotMatches = true;
+        });
+
+        slotEl.classList.toggle('conf-slot-dimmed', !slotMatches);
+        if (slotMatches) pairHasMatch = true;
+      });
+
+      pairDiv.style.display = pairHasMatch ? '' : 'none';
+      if (pairHasMatch) cardHasMatch = true;
+    });
+
+    card.classList.toggle('conf-card-match',    cardHasMatch);
+    card.classList.toggle('conf-card-no-match', !cardHasMatch);
+    if (cardHasMatch) totalVisible++;
+  });
+
+  noResults.classList.toggle('visible', filterNameLower && totalVisible === 0);
+}
+
+// Close autocomplete on outside click
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('conf-search-input')?.closest('.conf-search-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('conf-autocomplete')?.classList.remove('open');
+  }
+});
+
 function renderConfrontos(matches, scheduleByMatch) {
   const section = document.getElementById('confrontos-section');
   const container = document.getElementById('confrontos-tiers');
   section.style.display = 'block';
   container.innerHTML = '';
+
+  confBuildGuildList(matches, scheduleByMatch);
 
   const grid = document.createElement('div');
   grid.className = 'confrontos-tiers-grid';
@@ -3306,8 +3690,13 @@ function renderConfrontos(matches, scheduleByMatch) {
 
   container.appendChild(grid);
 
-  // Refresh "now/soon" badges every minute
-  setInterval(() => renderConfrontos(matches, scheduleByMatch), 60000);
+  // Re-apply any active filter after rebuild
+  if (confFilterName) confRenderFiltered(confFilterName);
+
+  // Refresh "now/soon" badges every minute (only register once)
+  if (!renderConfrontos._timer) {
+    renderConfrontos._timer = setInterval(() => renderConfrontos(matches, scheduleByMatch), 60000);
+  }
 }
 
 
