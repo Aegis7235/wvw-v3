@@ -367,7 +367,7 @@ async function binPut(url, data, retries = 3) {
       const ddbrEntry = {
         allianceId: MY_ALLIANCE_ID,
         allianceName: ddbrGuildData ? `[DDBR] ${ddbrGuildData.name}` : '[DDBR]',
-        memberGuilds: [], worldName: worldNames[String(ddbrWorldId)] || '', isDDBR: true,
+        memberGuilds: ['Dragons of Draezor [DD]', 'Core Trinta [CORE]'], worldName: worldNames[String(ddbrWorldId)] || '', isDDBR: true,
       };
       const existing = tierAllianceMap[ddbrTeam.matchId][ddbrTeam.color];
       if (!existing.find(a => a.isDDBR)) existing.unshift(ddbrEntry);
