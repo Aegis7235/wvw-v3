@@ -271,14 +271,13 @@ async function binPut(url, data, retries = 3) {
   console.log(`History: ${snapshots.length} snapshots, oldest ~${oldMinutes}min ago`);
 
   // 2. Fetch GW2 data
-  const [allMatchIds, worldsRaw, naWvWGuilds, csvText, soloCsvText, scheduleCsvText, ddbrGuildData] = await Promise.all([
+  const [allMatchIds, worldsRaw, naWvWGuilds, csvText, soloCsvText, scheduleCsvText] = await Promise.all([
     gw2('/wvw/matches'),
     gw2('/worlds?ids=all'),
     gw2('/wvw/guilds/na'),
     fetch(SHEET_URL).then(r => r.text()),
     fetch(SOLO_SHEET_URL).then(r => r.text()),
     fetch(SCHEDULE_SHEET_URL).then(r => r.text()),
-    fetch(`${GW2}/guild/${MY_ALLIANCE_ID}`).then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
 
   const naIds   = allMatchIds.filter(id => id.startsWith('1-')).sort();
@@ -303,6 +302,9 @@ async function binPut(url, data, retries = 3) {
   naIds.forEach(id => { tierAllianceMap[id] = { red:[], blue:[], green:[] }; });
 
   allianceData.forEach(a => {
+    // Mark our own alliance so the frontend can highlight it
+    if (a.allianceId.toUpperCase() === MY_ALLIANCE_ID.toUpperCase()) a.isDDBR = true;
+
     let team = null;
     if (naWvWGuilds?.[a.allianceId]) team = worldIdToTeam[String(naWvWGuilds[a.allianceId])];
     if (!team && a.worldName) {
@@ -357,22 +359,6 @@ async function binPut(url, data, retries = 3) {
       });
     });
   });
-
-  const ddbrWorldId = naWvWGuilds?.[MY_ALLIANCE_ID.toUpperCase()]
-                   || naWvWGuilds?.[MY_ALLIANCE_ID.toLowerCase()]
-                   || naWvWGuilds?.[MY_ALLIANCE_ID];
-  if (ddbrWorldId) {
-    const ddbrTeam = worldIdToTeam[String(ddbrWorldId)];
-    if (ddbrTeam && tierAllianceMap[ddbrTeam.matchId]) {
-      const ddbrEntry = {
-        allianceId: MY_ALLIANCE_ID,
-        allianceName: ddbrGuildData ? `[DDBR] ${ddbrGuildData.name}` : '[DDBR]',
-        memberGuilds: ['Dragons of Draezor [DD]', 'Core Trinta [CORE]'], worldName: worldNames[String(ddbrWorldId)] || '', isDDBR: true,
-      };
-      const existing = tierAllianceMap[ddbrTeam.matchId][ddbrTeam.color];
-      if (!existing.find(a => a.isDDBR)) existing.unshift(ddbrEntry);
-    }
-  }
 
   // 4c. Parse run schedule and resolve teams by guild name lookup in the page data
   const scheduleGuildsRaw = parseRunSchedule(scheduleCsvText);
