@@ -1,0 +1,29 @@
+name: Update WvW Data
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'   # every 4 hours
+  workflow_dispatch:           # allow manual trigger
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install node-fetch@3 papaparse
+
+      - name: Fetch & save data
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+          GIST_ID:    ${{ secrets.GIST_ID }}
+        run: node fetch-data.js

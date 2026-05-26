@@ -2145,7 +2145,7 @@ h1::after {
 <div class="status-strip">
   <div id="statusLine"><span class="spinner"></span> Iniciando…</div>
   <div class="proxy-note">
-    Data updated every 10 min via GitHub Actions · <a href="https://jsonbin.io" target="_blank">JSONBin</a>
+    Data updated every 4h via GitHub Actions · <a href="https://gist.github.com" target="_blank">GitHub Gist</a>
   </div>
 </div>
 
@@ -2376,9 +2376,10 @@ h1::after {
 // ═══════════════════════════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════════════════════════
-const JSONBIN_BIN_ID = '699e2a9843b1c97be99ac8fb';
-const JSONBIN_KEY    = '$2a$10$1On7fMZ4GdCJ4f1aUROKx.OHsQmhlbu7IMxjbiVD2yXn1qDOfhkae';
-const JSONBIN_URL    = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
+// GitHub Gist public URL — replace GIST_ID with your actual gist ID
+const GIST_ID       = 'SEU_GIST_ID_AQUI';
+const GIST_FILENAME = 'wvw-data.json';
+const GIST_URL      = `https://gist.githubusercontent.com/raw/${GIST_ID}/${GIST_FILENAME}`;
 
 // ═══════════════════════════════════════════════════════════════
 
@@ -2390,7 +2391,7 @@ function esc(s) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MAIN — só lê o JSONBin, nada mais
+// MAIN — lê o GitHub Gist
 // ═══════════════════════════════════════════════════════════════
 async function init() {
   document.getElementById('refreshBtn').disabled = true;
@@ -2398,23 +2399,17 @@ async function init() {
   setStatus('<span class="spinner"></span> Loading data…');
 
   try {
-    const r = await fetch(JSONBIN_URL + '/latest', {
-      headers: { 'X-Access-Key': JSONBIN_KEY }
-    });
-    if (!r.ok) throw new Error('Failed to load data from JSONBin: ' + r.status);
-    const json = await r.json();
-    const data = json.record;
+    // Add cache-busting so the browser always gets the latest gist
+    const r = await fetch(GIST_URL + '?t=' + Date.now());
+    if (!r.ok) throw new Error('Failed to load data from Gist: ' + r.status);
+    const data = await r.json();
 
     if (!data || !data.matches) throw new Error('Data not ready yet — GitHub Action may not have run. Try again in a minute.');
 
-    const { matches, tierAllianceMap, primaryWorlds, kdDelta, kdSeries, timestamp, scheduleByMatch } = data;
+    const { matches, tierAllianceMap, primaryWorlds, timestamp, scheduleByMatch } = data;
 
-    // Attach kdDelta, primaryWorlds and kdSeries into each match object for buildCard
     matches.forEach(m => {
-      m._kdDelta      = (kdDelta      || {})[m.id] || null;
       m._primaryWorld = (primaryWorlds || {})[m.id] || {};
-      m._kdSeries     = (kdSeries     || {})[m.id] || [];
-      // kills/deaths are already on match object from GW2 API
     });
 
     renderGrid(matches, tierAllianceMap);
@@ -2447,25 +2442,14 @@ async function init() {
 // RENDER
 // ═══════════════════════════════════════════════════════════════
 function renderGrid(matches, tierAllianceMap) {
-  // Find best K/D across all matches and colors
-  let bestKd = -1, bestMatchId = null, bestColor = null;
-  matches.forEach(m => {
-    ['red','blue','green'].forEach(color => {
-      const d = (m._kdDelta || {})[color];
-      if (!d || d.deaths === 0) return;
-      const kd = d.kills / d.deaths;
-      if (kd > bestKd) { bestKd = kd; bestMatchId = m.id; bestColor = color; }
-    });
-  });
-
   const grid = document.createElement('div');
   grid.className = 'tiers-grid';
-  matches.forEach((m, i) => grid.appendChild(buildCard(m, i+1, tierAllianceMap[m.id], bestMatchId, bestColor)));
+  matches.forEach((m, i) => grid.appendChild(buildCard(m, i+1, tierAllianceMap[m.id])));
   document.getElementById('app').innerHTML = '';
   document.getElementById('app').appendChild(grid);
 }
 
-function buildCard(match, tierNum, alliancesPerColor, bestMatchId, bestColor) {
+function buildCard(match, tierNum, alliancesPerColor) {
   const sc  = match.scores;
   const vp  = match.victory_points || {};
   const tot = (sc.red||0) + (sc.blue||0) + (sc.green||0);
@@ -2533,42 +2517,6 @@ function buildCard(match, tierNum, alliancesPerColor, bestMatchId, bestColor) {
 
       const colorLabel = { red: 'Red', blue: 'Blue', green: 'Green' };
 
-      // ── K/D delta
-      const kdDelta  = (match._kdDelta || {})[color];
-      let kdStr, kdClass, kdWindow;
-      if (!kdDelta) {
-        kdStr    = '—';
-        kdClass  = 'kd-wait';
-        kdWindow = 'collecting…';
-      } else {
-        const { kills, deaths, minutes } = kdDelta;
-        const kd = deaths > 0 ? (kills / deaths) : kills > 0 ? Infinity : 0;
-        kdStr    = deaths === 0 ? (kills > 0 ? '\u221e' : '—') : kd.toFixed(2);
-        kdClass  = deaths === 0 ? (kills > 0 ? 'kd-good' : 'kd-wait')
-                 : kd >= 1.5 ? 'kd-good' : kd >= 0.8 ? 'kd-mid' : 'kd-bad';
-        const h  = Math.floor(minutes / 60);
-        const mn = minutes % 60;
-        kdWindow = h > 0 ? `${h}h${mn > 0 ? mn + 'm' : ''}` : `${mn}m`;
-      }
-
-      // ── Total kills/deaths from match scores (weekly, resets with match)
-      const totKills  = match.kills  ? (match.kills[color]  ?? null) : null;
-      const totDeaths = match.deaths ? (match.deaths[color] ?? null) : null;
-
-      // Pre-compute weekly KD
-      let wKdStr = '—', wKdClass = 'kd-wait';
-      if (totKills !== null && totDeaths !== null) {
-        if (totDeaths === 0) {
-          wKdStr = totKills > 0 ? '∞' : '—';
-          wKdClass = totKills > 0 ? 'kd-good' : 'kd-wait';
-        } else {
-          const wkd = totKills / totDeaths;
-          wKdStr = wkd.toFixed(2);
-          wKdClass = wkd >= 1.5 ? 'kd-good' : wkd >= 0.8 ? 'kd-mid' : 'kd-bad';
-        }
-      }
-
-      const isBest = match.id === bestMatchId && color === bestColor;
       return `
       <div class="team ${color}">
         <div class="team-band"></div>
@@ -2580,32 +2528,6 @@ function buildCard(match, tierNum, alliancesPerColor, bestMatchId, bestColor) {
               <span class="vp">${vp[color]||0} VP</span>
               <span class="team-score">${fmt(sc[color])}</span>
             </div>
-          </div>
-          <div class="kd-strip${isBest ? ' kd-best' : ''}">
-            <div class="kd-section kd-section-recent">
-              ${isBest ? '<span class="kd-crown" title="Best K/D on the server">♛</span>' : ''}
-              <span class="kd-section-label">Last ${kdWindow}</span>
-              <span class="kd-label">K/D</span>
-              <span class="kd-value ${kdClass}">${kdStr}</span>
-              <div class="kd-sep"></div>
-              <span class="kd-label">Kills</span>
-              <span class="kd-value kd-kills-val">${kdDelta ? fmt(kdDelta.kills) : '—'}</span>
-              <div class="kd-sep"></div>
-              <span class="kd-label">Deaths</span>
-              <span class="kd-value kd-bad">${kdDelta ? fmt(kdDelta.deaths) : '—'}</span>
-            </div>
-            ${totKills !== null ? `
-            <div class="kd-section kd-section-weekly">
-              <span class="kd-section-label">Weekly</span>
-              <span class="kd-label">K/D</span>
-              <span class="kd-value ${wKdClass}">${wKdStr}</span>
-              <div class="kd-sep"></div>
-              <span class="kd-label">Kills</span>
-              <span class="kd-value kd-kills-val">${fmt(totKills)}</span>
-              <div class="kd-sep"></div>
-              <span class="kd-label">Deaths</span>
-              <span class="kd-value kd-bad">${fmt(totDeaths)}</span>
-            </div>` : ''}
           </div>
           ${blocksHtml}
         </div>
