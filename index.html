@@ -352,12 +352,13 @@ h1::after {
 
 .tier-label {
   font-family: var(--font-hud);
-  font-size: .45rem;
-  letter-spacing: .5em;
-  color: var(--muted);
+  font-size: .55rem;
+  letter-spacing: .4em;
+  color: var(--gold-dim);
   text-transform: uppercase;
   display: block;
-  margin-top: .1rem;
+  margin-top: .15rem;
+  font-weight: 600;
 }
 
 .tier-sep {
@@ -379,6 +380,43 @@ h1::after {
   font-size: .75rem;
   color: var(--muted);
   font-weight: 500;
+}
+
+
+/* ── TIER MOVEMENT INDICATOR ── */
+.tier-movement {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  font-family: var(--font-hud);
+  font-size: .52rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .18rem .5rem;
+  border-radius: 2px;
+  white-space: nowrap;
+  margin-left: .4rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+.tier-movement.up {
+  color: #50e090;
+  background: rgba(80,224,144,0.08);
+  border: 1px solid rgba(80,224,144,0.25);
+}
+.tier-movement.stay {
+  color: var(--text2);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--line2);
+}
+.tier-movement.down {
+  color: #ff7060;
+  background: rgba(255,112,96,0.08);
+  border: 1px solid rgba(255,112,96,0.25);
+}
+.tier-movement .mv-arrow {
+  font-size: .75rem;
+  line-height: 1;
 }
 
 /* ── SCORE BAR ── */
@@ -2377,7 +2415,7 @@ h1::after {
 // CONFIG
 // ═══════════════════════════════════════════════════════════════
 // GitHub Gist public URL — replace GIST_ID with your actual gist ID
-const GIST_ID       = 'c3f2d45bfb319c664634b09c8e80bb2e';
+const GIST_ID       = 'SEU_GIST_ID_AQUI';
 const GIST_FILENAME = 'wvw-data.json';
 const GIST_URL      = `https://gist.githubusercontent.com/raw/${GIST_ID}/${GIST_FILENAME}`;
 
@@ -2442,17 +2480,36 @@ async function init() {
 // RENDER
 // ═══════════════════════════════════════════════════════════════
 function renderGrid(matches, tierAllianceMap) {
+  const totalTiers = matches.length;
   const grid = document.createElement('div');
   grid.className = 'tiers-grid';
-  matches.forEach((m, i) => grid.appendChild(buildCard(m, i+1, tierAllianceMap[m.id])));
+  matches.forEach((m, i) => grid.appendChild(buildCard(m, i+1, tierAllianceMap[m.id], totalTiers)));
   document.getElementById('app').innerHTML = '';
   document.getElementById('app').appendChild(grid);
 }
 
-function buildCard(match, tierNum, alliancesPerColor) {
+function buildCard(match, tierNum, alliancesPerColor, totalTiers) {
   const sc  = match.scores;
   const vp  = match.victory_points || {};
   const tot = (sc.red||0) + (sc.blue||0) + (sc.green||0);
+
+  // Sort colors by VP to determine movement (highest VP = promotion, lowest = relegation)
+  const colors = ['red','blue','green'];
+  const vpSorted = [...colors].sort((a,b) => (vp[b]||0) - (vp[a]||0));
+  // vpSorted[0] = highest VP (promotes), vpSorted[2] = lowest (relegates)
+  // Middle team stays. Tier 1 can't go up; last tier can't go down.
+  function movementFor(color) {
+    const rank = vpSorted.indexOf(color); // 0=best, 1=mid, 2=worst
+    if (rank === 0) {
+      if (tierNum === 1) return { type: 'stay', label: 'Stays T1', arrow: '—' };
+      return { type: 'up',   label: `→ T${tierNum-1}`, arrow: '↑' };
+    }
+    if (rank === 1) return { type: 'stay', label: 'Stays', arrow: '—' };
+    if (rank === 2) {
+      if (tierNum === totalTiers) return { type: 'stay', label: `Stays T${tierNum}`, arrow: '—' };
+      return { type: 'down', label: `→ T${tierNum+1}`, arrow: '↓' };
+    }
+  }
   const end = new Date(match.end_time).toLocaleDateString('en-US', {day:'2-digit', month:'2-digit'});
 
   function primaryWorld(color) {
@@ -2527,6 +2584,7 @@ function buildCard(match, tierNum, alliancesPerColor) {
             <div class="team-scores">
               <span class="vp">${vp[color]||0} VP</span>
               <span class="team-score">${fmt(sc[color])}</span>
+              ${(() => { const mv = movementFor(color); return `<span class="tier-movement ${mv.type}"><span class="mv-arrow">${mv.arrow}</span>${mv.label}</span>`; })()}
             </div>
           </div>
           ${blocksHtml}
